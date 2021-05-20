@@ -4,6 +4,9 @@
 
 mod commands;
 
+use bitflags::bitflags;
+
+use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::game_sdk::SkuId;
 use crate::guild::GuildId;
 use crate::snowflake::Id;
@@ -13,6 +16,37 @@ use crate::user::User;
 pub use self::commands::*;
 
 use serde::{Deserialize, Serialize};
+
+use std::convert::TryFrom;
+
+bitflags! {
+    // From: https://github.com/discordjs/discord.js/blob/3c175cb5116fe50ba3084163565dd244a25b657f/src/util/ApplicationFlags.js
+    pub struct ApplicationFlags: u64 {
+        const MANAGED_EMOJI = 1<<2;
+        const GROUP_DM_CREATE = 1<<4;
+        const RPC_HAS_CONNECTED = 1<<11;
+        const GATEWAY_PRESENCE = 1<<12;
+        const GATEWAY_PRESENCE_LIMITED = 1<<13;
+        const GATEWAY_GUILD_MEMBERS = 1<<14;
+        const GATEWAY_GUILD_MEMBERS_LIMITED = 1<<15;
+        const VERIFICATION_PENDING_GUILD_LIMIT = 1<<16;
+        const EMBEDDED = 1<<17;
+    }
+}
+
+impl TryFrom<u64> for ApplicationFlags {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        Self::from_bits(u).ok_or(Self::Error::new(u))
+    }
+}
+
+impl From<ApplicationFlags> for u64 {
+    fn from(uf: ApplicationFlags) -> u64 {
+        uf.bits()
+    }
+}
 
 pub type ApplicationId = Id<Application>;
 
@@ -35,7 +69,7 @@ pub struct Application {
     primary_sku_id: Option<SkuId>,
     slug: Option<String>,
     cover_image: Option<String>,
-    flags: Option<u64>,
+    flags: Option<IntegerEnum<ApplicationFlags>>,
 }
 
 impl Application {
@@ -107,8 +141,14 @@ impl Application {
         self.cover_image.as_deref()
     }
 
-    pub fn flags(&self) -> Option<u64> {
-        self.flags
+    pub fn try_flags(
+        &self,
+    ) -> Option<Result<ApplicationFlags, EnumFromIntegerError>> {
+        self.flags.map(IntegerEnum::try_unwrap)
+    }
+
+    pub fn flags(&self) -> Option<ApplicationFlags> {
+        self.flags.map(IntegerEnum::unwrap)
     }
 }
 

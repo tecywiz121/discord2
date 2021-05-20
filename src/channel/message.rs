@@ -2,10 +2,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use bitflags::bitflags;
+
 use chrono::{DateTime, FixedOffset};
 
 use crate::application::{Application, ApplicationId};
 use crate::emoji::Emoji;
+use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::guild::{GuildId, GuildMember};
 use crate::permissions::RoleId;
 use crate::snowflake::Id;
@@ -13,6 +16,8 @@ use crate::user::User;
 use crate::webhook::WebhookId;
 
 use serde::{Deserialize, Serialize};
+
+use std::convert::TryFrom;
 
 use super::embed::*;
 use super::{Channel, ChannelId, ChannelKind};
@@ -85,8 +90,7 @@ pub enum Nonce {
     String(String),
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum MessageKind {
     Default,
     RecipientAdd,
@@ -110,8 +114,6 @@ pub enum MessageKind {
     ApplicationCommand,
     ThreadStarterMessage,
     GuildInviteReminder,
-
-    Other(u64),
 }
 
 impl From<MessageKind> for u64 {
@@ -139,14 +141,15 @@ impl From<MessageKind> for u64 {
             MessageKind::ApplicationCommand => 20,
             MessageKind::ThreadStarterMessage => 21,
             MessageKind::GuildInviteReminder => 22,
-            MessageKind::Other(other) => other,
         }
     }
 }
 
-impl From<u64> for MessageKind {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for MessageKind {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             0 => Self::Default,
             1 => Self::RecipientAdd,
             2 => Self::RecipientRemove,
@@ -170,8 +173,10 @@ impl From<u64> for MessageKind {
             21 => Self::ThreadStarterMessage,
             22 => Self::GuildInviteReminder,
 
-            other => Self::Other(other),
-        }
+            raw => return Err(EnumFromIntegerError::new(raw)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -180,7 +185,7 @@ pub struct ChannelMention {
     id: ChannelId,
     guild_id: GuildId,
     #[serde(rename = "type")]
-    kind: ChannelKind,
+    kind: IntegerEnum<ChannelKind>,
     name: String,
 }
 
@@ -193,12 +198,43 @@ impl ChannelMention {
         self.guild_id
     }
 
+    pub fn try_kind(&self) -> Result<ChannelKind, EnumFromIntegerError> {
+        self.kind.try_unwrap()
+    }
+
     pub fn kind(&self) -> ChannelKind {
-        self.kind
+        self.kind.unwrap()
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+}
+
+bitflags! {
+    pub struct MessageFlags: u64 {
+        const CROSSPOSTED = 1<<0;
+        const IS_CROSSPOST = 1<<1;
+        const SUPRESS_EMBEDS = 1<<2;
+        const SOURCE_MESSAGE_DELETED = 1<<3;
+        const URGENT = 1<<4;
+        const HAS_THREAD = 1<<5;
+        const EPHEMERAL = 1<<6;
+        const LOADING = 1<<7;
+    }
+}
+
+impl TryFrom<u64> for MessageFlags {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        Self::from_bits(u).ok_or(Self::Error::new(u))
+    }
+}
+
+impl From<MessageFlags> for u64 {
+    fn from(uf: MessageFlags) -> u64 {
+        uf.bits()
     }
 }
 
@@ -226,12 +262,12 @@ pub struct Message {
     pinned: bool,
     webhook_id: Option<WebhookId>,
     #[serde(rename = "type")]
-    kind: MessageKind,
+    kind: IntegerEnum<MessageKind>,
     activity: Option<MessageActivity>,
     application: Option<Application>,
     application_id: Option<ApplicationId>,
     message_reference: Option<MessageReference>,
-    flags: Option<u64>,
+    flags: Option<IntegerEnum<MessageFlags>>,
     stickers: Option<Vec<Sticker>>,
     referenced_message: Option<Box<Message>>,
     interaction: Option<MessageInteraction>,
@@ -315,8 +351,12 @@ impl Message {
         self.webhook_id
     }
 
+    pub fn try_kind(&self) -> Result<MessageKind, EnumFromIntegerError> {
+        self.kind.try_unwrap()
+    }
+
     pub fn kind(&self) -> MessageKind {
-        self.kind
+        self.kind.unwrap()
     }
 
     pub fn activity(&self) -> Option<&MessageActivity> {
@@ -335,8 +375,14 @@ impl Message {
         self.message_reference.as_ref()
     }
 
-    pub fn flags(&self) -> Option<u64> {
-        self.flags
+    pub fn try_flags(
+        &self,
+    ) -> Option<Result<MessageFlags, EnumFromIntegerError>> {
+        self.flags.map(IntegerEnum::try_unwrap)
+    }
+
+    pub fn flags(&self) -> Option<MessageFlags> {
+        self.flags.map(IntegerEnum::unwrap)
     }
 
     pub fn stickers(&self) -> Option<&[Sticker]> {
@@ -356,25 +402,27 @@ impl Message {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Copy, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Copy)]
 pub enum MessageActivityKind {
     Join,
     Spectate,
     Listen,
     JoinRequest,
-    Other(u64),
 }
 
-impl From<u64> for MessageActivityKind {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for MessageActivityKind {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             1 => Self::Join,
             2 => Self::Spectate,
             3 => Self::Listen,
             5 => Self::JoinRequest,
-            other => Self::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -385,7 +433,6 @@ impl From<MessageActivityKind> for u64 {
             MessageActivityKind::Spectate => 2,
             MessageActivityKind::Listen => 3,
             MessageActivityKind::JoinRequest => 5,
-            MessageActivityKind::Other(other) => other,
         }
     }
 }
@@ -393,8 +440,24 @@ impl From<MessageActivityKind> for u64 {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageActivity {
     #[serde(rename = "type")]
-    kind: MessageActivityKind,
+    kind: IntegerEnum<MessageActivityKind>,
     party_id: Option<String>,
+}
+
+impl MessageActivity {
+    pub fn try_kind(
+        &self,
+    ) -> Result<MessageActivityKind, EnumFromIntegerError> {
+        self.kind.try_unwrap()
+    }
+
+    pub fn kind(&self) -> MessageActivityKind {
+        self.kind.unwrap()
+    }
+
+    pub fn party_id(&self) -> Option<&str> {
+        self.party_id.as_deref()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -423,21 +486,23 @@ impl MessageReference {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum InteractionKind {
     Ping,
     ApplicationCommand,
-    Other(u64),
 }
 
-impl From<u64> for InteractionKind {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for InteractionKind {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             1 => Self::Ping,
             2 => Self::ApplicationCommand,
-            other => Self::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -446,7 +511,6 @@ impl From<InteractionKind> for u64 {
         match k {
             InteractionKind::Ping => 1,
             InteractionKind::ApplicationCommand => 2,
-            InteractionKind::Other(other) => other,
         }
     }
 }
@@ -457,9 +521,31 @@ pub type MessageInteractionId = Id<MessageInteraction>;
 pub struct MessageInteraction {
     id: MessageInteractionId,
     #[serde(rename = "type")]
-    kind: InteractionKind,
+    kind: IntegerEnum<InteractionKind>,
     name: String,
     user: User,
+}
+
+impl MessageInteraction {
+    pub fn id(&self) -> MessageInteractionId {
+        self.id
+    }
+
+    pub fn try_kind(&self) -> Result<InteractionKind, EnumFromIntegerError> {
+        self.kind.try_unwrap()
+    }
+
+    pub fn kind(&self) -> InteractionKind {
+        self.kind.unwrap()
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn user(&self) -> &User {
+        &self.user
+    }
 }
 
 pub type StickerId = Id<Sticker>;
@@ -479,26 +565,64 @@ pub struct Sticker {
     tags: Option<String>,
     asset: String,
     #[serde(rename = "format_type")]
-    format_kind: StickerFormat,
+    format_kind: IntegerEnum<StickerFormat>,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+impl Sticker {
+    pub fn id(&self) -> StickerId {
+        self.id
+    }
+
+    pub fn pack_id(&self) -> StickerPackId {
+        self.pack_id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn tags(&self) -> Option<&str> {
+        self.tags.as_deref()
+    }
+
+    pub fn asset(&self) -> &str {
+        &self.asset
+    }
+
+    pub fn try_format_kind(
+        &self,
+    ) -> Result<StickerFormat, EnumFromIntegerError> {
+        self.format_kind.try_unwrap()
+    }
+
+    pub fn format_kind(&self) -> StickerFormat {
+        self.format_kind.unwrap()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum StickerFormat {
     Png,
     APng,
     Lottie,
-    Other(u64),
 }
 
-impl From<u64> for StickerFormat {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for StickerFormat {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             1 => Self::Png,
             2 => Self::APng,
             3 => Self::Lottie,
-            other => Self::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -508,7 +632,6 @@ impl From<StickerFormat> for u64 {
             StickerFormat::Png => 1,
             StickerFormat::APng => 2,
             StickerFormat::Lottie => 3,
-            StickerFormat::Other(other) => other,
         }
     }
 }

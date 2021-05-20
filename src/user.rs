@@ -2,10 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use bitflags::bitflags;
+
 use crate::application::ApplicationId;
+use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::snowflake::Id;
 
 use serde::{Deserialize, Serialize};
+
+use std::convert::TryFrom;
 
 #[derive(Debug)]
 #[doc(hidden)]
@@ -38,23 +43,25 @@ impl From<UserId> for ApplicationId {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum PremiumKind {
     None,
     NitroClassic,
     Nitro,
-    Other(u64),
 }
 
-impl From<u64> for PremiumKind {
-    fn from(u: u64) -> PremiumKind {
-        match u {
+impl TryFrom<u64> for PremiumKind {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<PremiumKind, Self::Error> {
+        let r = match u {
             0 => Self::None,
             1 => Self::NitroClassic,
             2 => Self::Nitro,
-            other => Self::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -64,7 +71,6 @@ impl From<PremiumKind> for u64 {
             PremiumKind::None => 0,
             PremiumKind::NitroClassic => 1,
             PremiumKind::Nitro => 2,
-            PremiumKind::Other(other) => other,
         }
     }
 }
@@ -81,10 +87,42 @@ pub struct User {
     locale: Option<String>,
     verified: Option<bool>,
     email: Option<String>,
-    flags: Option<u64>,
+    flags: Option<IntegerEnum<UserFlags>>,
     #[serde(rename = "premium_type")]
-    premium_kind: Option<PremiumKind>,
-    public_flags: Option<u64>,
+    premium_kind: Option<IntegerEnum<PremiumKind>>,
+    public_flags: Option<IntegerEnum<UserFlags>>,
+}
+
+bitflags! {
+    pub struct UserFlags: u64 {
+        const NONE = 0;
+        const DISCORD_EMPLOYEE = 1<<0;
+        const PARTNERED_SERVER_OWNER = 1<<1;
+        const HYPE_SQUAD_EVENTS = 1<<2;
+        const BUG_HUNTER_LEVEL_1 = 1<<3;
+        const HOUSE_BRAVERY = 1<<6;
+        const HOUSE_BRILLIANCE = 1<<7;
+        const HOUSE_BALANCE = 1<<8;
+        const EARLY_SUPPORTER = 1<<9;
+        const TEAM_USER = 1<<10;
+        const BUG_HUNTER_LEVEL_2 = 1<<14;
+        const VERIFIED_BOT = 1<<16;
+        const EARLY_VERIFIED_BOT_DEVELOPER = 1<<17;
+    }
+}
+
+impl TryFrom<u64> for UserFlags {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        Self::from_bits(u).ok_or(Self::Error::new(u))
+    }
+}
+
+impl From<UserFlags> for u64 {
+    fn from(uf: UserFlags) -> u64 {
+        uf.bits()
+    }
 }
 
 impl User {
@@ -128,15 +166,31 @@ impl User {
         self.email.as_deref()
     }
 
-    pub fn flags(&self) -> Option<u64> {
-        self.flags
+    pub fn try_flags(&self) -> Option<Result<UserFlags, EnumFromIntegerError>> {
+        self.flags.map(IntegerEnum::try_unwrap)
+    }
+
+    pub fn flags(&self) -> Option<UserFlags> {
+        self.flags.map(IntegerEnum::unwrap)
+    }
+
+    pub fn try_premium_kind(
+        &self,
+    ) -> Option<Result<PremiumKind, EnumFromIntegerError>> {
+        self.premium_kind.map(IntegerEnum::try_unwrap)
     }
 
     pub fn premium_kind(&self) -> Option<PremiumKind> {
-        self.premium_kind
+        self.premium_kind.map(IntegerEnum::unwrap)
     }
 
-    pub fn public_flags(&self) -> Option<u64> {
-        self.public_flags
+    pub fn try_public_flags(
+        &self,
+    ) -> Option<Result<UserFlags, EnumFromIntegerError>> {
+        self.public_flags.map(IntegerEnum::try_unwrap)
+    }
+
+    pub fn public_flags(&self) -> Option<UserFlags> {
+        self.public_flags.map(IntegerEnum::unwrap)
     }
 }

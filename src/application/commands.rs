@@ -2,9 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::snowflake::Id;
 
 use serde::{Deserialize, Serialize};
+
+use std::convert::TryFrom;
 
 use super::ApplicationId;
 
@@ -74,8 +77,7 @@ pub struct ApplicationCommandOptionChoice {
     value: ChoiceValue,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ApplicationCommandOptionKind {
     SubCommand,
     SubCommandGroup,
@@ -86,8 +88,6 @@ pub enum ApplicationCommandOptionKind {
     Channel,
     Role,
     Mentionable,
-
-    Other(u64),
 }
 
 impl From<ApplicationCommandOptionKind> for u64 {
@@ -102,15 +102,15 @@ impl From<ApplicationCommandOptionKind> for u64 {
             ApplicationCommandOptionKind::Channel => 7,
             ApplicationCommandOptionKind::Role => 8,
             ApplicationCommandOptionKind::Mentionable => 9,
-
-            ApplicationCommandOptionKind::Other(other) => other,
         }
     }
 }
 
-impl From<u64> for ApplicationCommandOptionKind {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for ApplicationCommandOptionKind {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             1 => Self::SubCommand,
             2 => Self::SubCommandGroup,
             3 => Self::String,
@@ -121,15 +121,18 @@ impl From<u64> for ApplicationCommandOptionKind {
             8 => Self::Role,
             9 => Self::Mentionable,
 
-            other => ApplicationCommandOptionKind::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
 pub struct ApplicationCommandOption {
+    #[builder(setter(into))]
     #[serde(rename = "type")]
-    kind: ApplicationCommandOptionKind,
+    kind: IntegerEnum<ApplicationCommandOptionKind>,
 
     #[builder(setter(into))]
     name: String,

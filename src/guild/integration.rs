@@ -4,19 +4,19 @@
 
 use chrono::{DateTime, FixedOffset};
 
+use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::permissions::RoleId;
 use crate::snowflake::Id;
 use crate::user::User;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+use std::convert::TryFrom;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum IntegrationExpireBehavior {
     RemoveRole,
     Kick,
-
-    Other(u64),
 }
 
 impl From<IntegrationExpireBehavior> for u64 {
@@ -24,18 +24,21 @@ impl From<IntegrationExpireBehavior> for u64 {
         match u {
             IntegrationExpireBehavior::RemoveRole => 0,
             IntegrationExpireBehavior::Kick => 1,
-            IntegrationExpireBehavior::Other(other) => other,
         }
     }
 }
 
-impl From<u64> for IntegrationExpireBehavior {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for IntegrationExpireBehavior {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             0 => Self::RemoveRole,
             1 => Self::Kick,
-            other => Self::Other(other),
-        }
+            raw => return Err(Self::Error::new(raw)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -51,7 +54,7 @@ pub struct Integration {
     syncing: Option<bool>,
     role_id: Option<RoleId>,
     enable_emoticons: Option<bool>,
-    expire_behavior: Option<IntegrationExpireBehavior>,
+    expire_behavior: Option<IntegerEnum<IntegrationExpireBehavior>>,
     expire_grace_period: Option<u64>,
     user: Option<User>,
     account: IntegrationAccount,
@@ -90,8 +93,14 @@ impl Integration {
         self.enable_emoticons
     }
 
+    pub fn try_expire_behavior(
+        &self,
+    ) -> Option<Result<IntegrationExpireBehavior, EnumFromIntegerError>> {
+        self.expire_behavior.map(IntegerEnum::try_unwrap)
+    }
+
     pub fn expire_behavior(&self) -> Option<IntegrationExpireBehavior> {
-        self.expire_behavior
+        self.expire_behavior.map(IntegerEnum::unwrap)
     }
 
     pub fn expire_grace_period(&self) -> Option<u64> {

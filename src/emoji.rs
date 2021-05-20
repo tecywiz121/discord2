@@ -58,6 +58,8 @@ impl Emoji {
 
 #[cfg(test)]
 mod tests {
+    use crate::user::UserFlags;
+
     use serde_json::json;
 
     use super::*;
@@ -98,7 +100,13 @@ mod tests {
         assert_eq!(user.discriminator(), "0002");
         assert_eq!(user.id(), 96008815106887111.into());
         assert_eq!(user.avatar(), Some("5500909a3274e1812beb4e8de6631111"));
-        assert_eq!(user.public_flags(), Some(131328));
+        assert_eq!(
+            user.public_flags(),
+            Some(
+                UserFlags::HOUSE_BALANCE
+                    | UserFlags::EARLY_VERIFIED_BOT_DEVELOPER
+            )
+        );
     }
 
     #[test]

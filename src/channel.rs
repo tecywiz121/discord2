@@ -5,9 +5,12 @@
 mod embed;
 mod message;
 
+use bitflags::bitflags;
+
 use chrono::{DateTime, FixedOffset};
 
 use crate::application::ApplicationId;
+use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::guild::GuildId;
 use crate::permissions::RoleId;
 use crate::snowflake::Id;
@@ -16,6 +19,8 @@ use crate::user::{User, UserId};
 pub use self::message::*;
 
 use serde::{Deserialize, Serialize};
+
+use std::convert::TryFrom;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadMetadata {
@@ -53,7 +58,7 @@ pub struct ThreadMember {
     id: ChannelId,
     user_id: UserId,
     join_timestamp: DateTime<FixedOffset>,
-    flags: u64,
+    flags: IntegerEnum<ThreadMemberFlags>,
 }
 
 impl ThreadMember {
@@ -69,26 +74,52 @@ impl ThreadMember {
         self.join_timestamp
     }
 
-    pub fn flags(&self) -> u64 {
-        self.flags
+    pub fn try_flags(&self) -> Result<ThreadMemberFlags, EnumFromIntegerError> {
+        self.flags.try_unwrap()
+    }
+
+    pub fn flags(&self) -> ThreadMemberFlags {
+        self.flags.unwrap()
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Copy, Hash, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+bitflags! {
+    pub struct ThreadMemberFlags: u64 {
+        const NONE = 0;
+    }
+}
+
+impl TryFrom<u64> for ThreadMemberFlags {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        Self::from_bits(u).ok_or(Self::Error::new(u))
+    }
+}
+
+impl From<ThreadMemberFlags> for u64 {
+    fn from(tmf: ThreadMemberFlags) -> u64 {
+        tmf.bits()
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
 pub enum VideoQualityMode {
     Auto,
     Full,
-    Other(u64),
 }
 
-impl From<u64> for VideoQualityMode {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for VideoQualityMode {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             1 => Self::Auto,
             2 => Self::Full,
-            other => Self::Other(other),
-        }
+            raw => return Err(EnumFromIntegerError::new(raw)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -97,7 +128,6 @@ impl From<VideoQualityMode> for u64 {
         match v {
             VideoQualityMode::Auto => 1,
             VideoQualityMode::Full => 2,
-            VideoQualityMode::Other(other) => other,
         }
     }
 }
@@ -149,8 +179,7 @@ impl Overwrite {
 
 pub type ChannelId = Id<Channel>;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum ChannelKind {
     GuildText,
     Dm,
@@ -163,7 +192,6 @@ pub enum ChannelKind {
     GuildPublicThread,
     GuildPrivateThread,
     GuildStageVoice,
-    Other(u64),
 }
 
 impl From<ChannelKind> for u64 {
@@ -180,14 +208,15 @@ impl From<ChannelKind> for u64 {
             ChannelKind::GuildPublicThread => 11,
             ChannelKind::GuildPrivateThread => 12,
             ChannelKind::GuildStageVoice => 13,
-            ChannelKind::Other(other) => other,
         }
     }
 }
 
-impl From<u64> for ChannelKind {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for ChannelKind {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             0 => Self::GuildText,
             1 => Self::Dm,
             2 => Self::GuildVoice,
@@ -199,8 +228,10 @@ impl From<u64> for ChannelKind {
             11 => Self::GuildPublicThread,
             12 => Self::GuildPrivateThread,
             13 => Self::GuildStageVoice,
-            other => Self::Other(other),
-        }
+            raw => return Err(EnumFromIntegerError::new(raw)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -208,7 +239,7 @@ impl From<u64> for ChannelKind {
 pub struct Channel {
     id: ChannelId,
     #[serde(rename = "type")]
-    kind: Option<ChannelKind>,
+    kind: Option<IntegerEnum<ChannelKind>>,
     guild_id: Option<GuildId>,
     position: Option<u64>,
     permission_overwrites: Option<Vec<Overwrite>>,
@@ -226,7 +257,7 @@ pub struct Channel {
     parent_id: Option<ChannelId>,
     last_pin_timestamp: Option<DateTime<FixedOffset>>,
     rtc_region: Option<String>,
-    video_quality_mode: Option<VideoQualityMode>,
+    video_quality_mode: Option<IntegerEnum<VideoQualityMode>>,
     message_count: Option<u64>,
     member_count: Option<u64>,
     thread_metadata: Option<ThreadMetadata>,
@@ -238,8 +269,14 @@ impl Channel {
         self.id
     }
 
+    pub fn try_kind(
+        &self,
+    ) -> Option<Result<ChannelKind, EnumFromIntegerError>> {
+        self.kind.map(IntegerEnum::try_unwrap)
+    }
+
     pub fn kind(&self) -> Option<ChannelKind> {
-        self.kind
+        self.kind.map(IntegerEnum::unwrap)
     }
 
     pub fn guild_id(&self) -> Option<GuildId> {
@@ -302,8 +339,14 @@ impl Channel {
         self.rtc_region.as_ref().map(String::as_ref)
     }
 
+    pub fn try_video_quality_mode(
+        &self,
+    ) -> Option<Result<VideoQualityMode, EnumFromIntegerError>> {
+        self.video_quality_mode.map(IntegerEnum::try_unwrap)
+    }
+
     pub fn video_quality_mode(&self) -> Option<VideoQualityMode> {
-        self.video_quality_mode
+        self.video_quality_mode.map(IntegerEnum::unwrap)
     }
 
     pub fn message_count(&self) -> Option<u64> {
@@ -721,7 +764,7 @@ mod tests {
         assert_eq!(msg.channel_id(), 290926798999357250.into());
         assert!(msg.mentions().is_empty());
         assert_eq!(msg.kind(), MessageKind::Default);
-        assert_eq!(msg.flags(), Some(2));
+        assert_eq!(msg.flags(), Some(MessageFlags::IS_CROSSPOST));
         // TODO: Check message reference
 
         let mention_channels = msg.mention_channels().unwrap();

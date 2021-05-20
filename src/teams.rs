@@ -2,19 +2,20 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::snowflake::Id;
 use crate::user::{User, UserId};
 
 use serde::{Deserialize, Serialize};
 
+use std::convert::TryFrom;
+
 pub type TeamId = Id<Team>;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum MembershipState {
     Invited,
     Accepted,
-    Other(u64),
 }
 
 impl From<MembershipState> for u64 {
@@ -22,27 +23,54 @@ impl From<MembershipState> for u64 {
         match u {
             MembershipState::Invited => 1,
             MembershipState::Accepted => 2,
-            MembershipState::Other(other) => other,
         }
     }
 }
 
-impl From<u64> for MembershipState {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for MembershipState {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             1 => Self::Invited,
             2 => Self::Accepted,
-            other => Self::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TeamMember {
-    membership_state: MembershipState,
+    membership_state: IntegerEnum<MembershipState>,
     permissions: Vec<String>,
     team_id: TeamId,
     user: User,
+}
+
+impl TeamMember {
+    pub fn try_membership_state(
+        &self,
+    ) -> Result<MembershipState, EnumFromIntegerError> {
+        self.membership_state.try_unwrap()
+    }
+
+    pub fn membership_state(&self) -> MembershipState {
+        self.membership_state.unwrap()
+    }
+
+    pub fn permissions(&self) -> &[String] {
+        &self.permissions
+    }
+
+    pub fn team_id(&self) -> TeamId {
+        self.team_id
+    }
+
+    pub fn user(&self) -> &User {
+        &self.user
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -7,6 +7,7 @@ pub mod audit_log;
 pub mod channel;
 mod discord;
 pub mod emoji;
+pub mod enums;
 pub mod game_sdk;
 pub mod gateway;
 pub mod guild;

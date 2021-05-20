@@ -4,11 +4,14 @@
 
 use crate::application::ApplicationId;
 use crate::channel::{Channel, ChannelId};
+use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::guild::GuildId;
 use crate::snowflake::Id;
 use crate::user::User;
 
 use serde::{Deserialize, Serialize};
+
+use std::convert::TryFrom;
 
 pub type WebhookId = Id<Webhook>;
 
@@ -37,7 +40,7 @@ impl SourceGuild {
 pub struct Webhook {
     id: WebhookId,
     #[serde(rename = "type")]
-    kind: WebhookKind,
+    kind: IntegerEnum<WebhookKind>,
     guild_id: Option<GuildId>,
     channel_id: Option<ChannelId>,
     user: Option<User>,
@@ -55,8 +58,12 @@ impl Webhook {
         self.id
     }
 
+    pub fn try_kind(&self) -> Result<WebhookKind, EnumFromIntegerError> {
+        self.kind.try_unwrap()
+    }
+
     pub fn kind(&self) -> WebhookKind {
-        self.kind
+        self.kind.unwrap()
     }
 
     pub fn guild_id(&self) -> Option<GuildId> {
@@ -100,25 +107,25 @@ impl Webhook {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WebhookKind {
     Incoming,
     ChannelFollower,
     Application,
-
-    Other(u64),
 }
 
-impl From<u64> for WebhookKind {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for WebhookKind {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             1 => Self::Incoming,
             2 => Self::ChannelFollower,
             3 => Self::Application,
+            raw => return Err(EnumFromIntegerError::new(raw)),
+        };
 
-            other => Self::Other(other),
-        }
+        Ok(r)
     }
 }
 
@@ -128,14 +135,14 @@ impl From<WebhookKind> for u64 {
             WebhookKind::Incoming => 1,
             WebhookKind::ChannelFollower => 2,
             WebhookKind::Application => 3,
-
-            WebhookKind::Other(other) => other,
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::user::UserFlags;
+
     use super::*;
 
     use serde_json::json;
@@ -179,7 +186,13 @@ mod tests {
         assert_eq!(user.discriminator(), "7479");
         assert_eq!(user.id(), 190320984123768832.into());
         assert_eq!(user.avatar(), Some("b004ec1740a63ca06ae2e14c5cee11f3"));
-        assert_eq!(user.public_flags(), Some(131328));
+        assert_eq!(
+            user.public_flags(),
+            Some(
+                UserFlags::HOUSE_BALANCE
+                    | UserFlags::EARLY_VERIFIED_BOT_DEVELOPER
+            )
+        );
     }
 
     #[test]
@@ -235,7 +248,13 @@ mod tests {
         assert_eq!(user.discriminator(), "7479");
         assert_eq!(user.id(), 190320984123768832.into());
         assert_eq!(user.avatar(), Some("b004ec1740a63ca06ae2e14c5cee11f3"));
-        assert_eq!(user.public_flags(), Some(131328));
+        assert_eq!(
+            user.public_flags(),
+            Some(
+                UserFlags::HOUSE_BALANCE
+                    | UserFlags::EARLY_VERIFIED_BOT_DEVELOPER
+            )
+        );
     }
 
     #[test]

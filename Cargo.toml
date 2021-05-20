@@ -16,6 +16,7 @@ backtraces = [ "snafu/backtraces" ]
 educe = "0.4.16"
 snafu = "0.6.10"
 typed-builder = "0.9.0"
+bitflags = "1.2.1"
 
 [dependencies.serde]
 version = "1.0.126"

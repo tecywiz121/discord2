@@ -4,11 +4,16 @@
 
 mod integration;
 
+use bitflags::bitflags;
+
 use chrono::{DateTime, FixedOffset};
 
 use crate::application::ApplicationId;
 use crate::channel::{Channel, ChannelId};
 use crate::emoji::{Emoji, EmojiId};
+use crate::enums::{
+    EnumFromIntegerError, IntegerEnum, ParseEnumError, StringEnum,
+};
 use crate::gateway::PresenceUpdateEvent;
 use crate::permissions::{Role, RoleId};
 use crate::snowflake::Id;
@@ -19,17 +24,18 @@ pub use self::integration::*;
 
 use serde::{Deserialize, Serialize};
 
+use std::convert::TryFrom;
+use std::str::FromStr;
+
 pub type GuildId = Id<Guild>;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum VerificationLevel {
     None,
     Low,
     Medium,
     High,
     VeryHigh,
-    Other(u64),
 }
 
 impl From<VerificationLevel> for u64 {
@@ -40,30 +46,31 @@ impl From<VerificationLevel> for u64 {
             VerificationLevel::Medium => 2,
             VerificationLevel::High => 3,
             VerificationLevel::VeryHigh => 4,
-            VerificationLevel::Other(other) => other,
         }
     }
 }
 
-impl From<u64> for VerificationLevel {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for VerificationLevel {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             0 => Self::None,
             1 => Self::Low,
             2 => Self::Medium,
             3 => Self::High,
             4 => Self::VeryHigh,
-            other => Self::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum DefaultMessageNotificationLevel {
     AllMessages,
     OnlyMentions,
-    Other(u64),
 }
 
 impl From<DefaultMessageNotificationLevel> for u64 {
@@ -71,39 +78,43 @@ impl From<DefaultMessageNotificationLevel> for u64 {
         match u {
             DefaultMessageNotificationLevel::AllMessages => 0,
             DefaultMessageNotificationLevel::OnlyMentions => 1,
-            DefaultMessageNotificationLevel::Other(other) => other,
         }
     }
 }
 
-impl From<u64> for DefaultMessageNotificationLevel {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for DefaultMessageNotificationLevel {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             0 => DefaultMessageNotificationLevel::AllMessages,
             1 => DefaultMessageNotificationLevel::OnlyMentions,
-            other => DefaultMessageNotificationLevel::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ExplicitContentFilterLevel {
     Disabled,
     MembersWithoutRoles,
     AllMembers,
-
-    Other(u64),
 }
 
-impl From<u64> for ExplicitContentFilterLevel {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for ExplicitContentFilterLevel {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             0 => Self::Disabled,
             1 => Self::MembersWithoutRoles,
             2 => Self::AllMembers,
-            other => Self::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -113,13 +124,11 @@ impl From<ExplicitContentFilterLevel> for u64 {
             ExplicitContentFilterLevel::Disabled => 0,
             ExplicitContentFilterLevel::MembersWithoutRoles => 1,
             ExplicitContentFilterLevel::AllMembers => 2,
-            ExplicitContentFilterLevel::Other(other) => other,
         }
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(from = "String", into = "String")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum GuildFeature {
     AnimatedIcon,
     Banner,
@@ -136,13 +145,13 @@ pub enum GuildFeature {
     Verified,
     VipRegions,
     WelcomeScreenEnabled,
-
-    Other(String),
 }
 
-impl From<String> for GuildFeature {
-    fn from(s: String) -> Self {
-        match s.as_str() {
+impl FromStr for GuildFeature {
+    type Err = ParseEnumError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let r = match s {
             "ANIMATED_ICON" => Self::AnimatedIcon,
             "BANNER" => Self::Banner,
             "COMMERCE" => Self::Commerce,
@@ -161,14 +170,16 @@ impl From<String> for GuildFeature {
             "VIP_REGIONS" => Self::VipRegions,
             "WELCOME_SCREEN_ENABLED" => Self::WelcomeScreenEnabled,
 
-            _ => Self::Other(s),
-        }
+            other => return Err(ParseEnumError::new(other.to_owned())),
+        };
+
+        Ok(r)
     }
 }
 
-impl From<GuildFeature> for String {
-    fn from(f: GuildFeature) -> Self {
-        let txt = match f {
+impl AsRef<str> for GuildFeature {
+    fn as_ref(&self) -> &str {
+        match self {
             GuildFeature::AnimatedIcon => "ANIMATED_ICON",
             GuildFeature::Banner => "BANNER",
             GuildFeature::Commerce => "COMMERCE",
@@ -186,29 +197,34 @@ impl From<GuildFeature> for String {
             GuildFeature::Verified => "VERIFIED",
             GuildFeature::VipRegions => "VIP_REGIONS",
             GuildFeature::WelcomeScreenEnabled => "WELCOME_SCREEN_ENABLED",
-
-            GuildFeature::Other(s) => return s,
-        };
-
-        txt.to_owned()
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+impl std::fmt::Display for GuildFeature {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let txt = self.as_ref();
+        f.write_str(txt)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum MfaLevel {
     None,
     Elevated,
-    Other(u64),
 }
 
-impl From<u64> for MfaLevel {
-    fn from(u: u64) -> MfaLevel {
-        match u {
+impl TryFrom<u64> for MfaLevel {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<MfaLevel, Self::Error> {
+        let r = match u {
             0 => MfaLevel::None,
             1 => MfaLevel::Elevated,
-            other => MfaLevel::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 
@@ -217,31 +233,31 @@ impl From<MfaLevel> for u64 {
         match u {
             MfaLevel::None => 0,
             MfaLevel::Elevated => 1,
-            MfaLevel::Other(other) => other,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(from = "u64", into = "u64")]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum PremiumTier {
     None,
     Tier1,
     Tier2,
     Tier3,
-
-    Other(u64),
 }
 
-impl From<u64> for PremiumTier {
-    fn from(u: u64) -> Self {
-        match u {
+impl TryFrom<u64> for PremiumTier {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
             0 => Self::None,
             1 => Self::Tier1,
             2 => Self::Tier2,
             3 => Self::Tier3,
-            other => Self::Other(other),
-        }
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
     }
 }
 impl From<PremiumTier> for u64 {
@@ -251,7 +267,6 @@ impl From<PremiumTier> for u64 {
             PremiumTier::Tier1 => 1,
             PremiumTier::Tier2 => 2,
             PremiumTier::Tier3 => 3,
-            PremiumTier::Other(other) => other,
         }
     }
 }
@@ -399,6 +414,28 @@ impl Guild {
     }
 }
 
+bitflags! {
+    pub struct SystemChannelFlags: u64 {
+        const SUPRESS_JOIN_NOTIFICATIONS = 1<<0;
+        const SUPRESS_PREMIUM_SUBSCRIPTIONS = 1<<1;
+        const SUPRESS_GUILD_REMINDER_NOTIFICATIONS = 1<<2;
+    }
+}
+
+impl TryFrom<u64> for SystemChannelFlags {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        Self::from_bits(u).ok_or(Self::Error::new(u))
+    }
+}
+
+impl From<SystemChannelFlags> for u64 {
+    fn from(uf: SystemChannelFlags) -> u64 {
+        uf.bits()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UnavailableGuild {
@@ -433,16 +470,16 @@ pub struct AvailableGuild {
     afk_timeout: u64,
     widget_enabled: Option<bool>,
     widget_channel_id: Option<ChannelId>,
-    verification_level: VerificationLevel,
-    default_message_notifications: DefaultMessageNotificationLevel,
-    explicit_content_filter: ExplicitContentFilterLevel,
+    verification_level: IntegerEnum<VerificationLevel>,
+    default_message_notifications: IntegerEnum<DefaultMessageNotificationLevel>,
+    explicit_content_filter: IntegerEnum<ExplicitContentFilterLevel>,
     roles: Vec<Role>,
     emojis: Vec<Emoji>,
-    features: Vec<GuildFeature>,
-    mfa_level: MfaLevel,
+    features: Vec<StringEnum<GuildFeature>>,
+    mfa_level: IntegerEnum<MfaLevel>,
     application_id: Option<ApplicationId>,
     system_channel_id: Option<ChannelId>,
-    system_channel_flags: u64,
+    system_channel_flags: IntegerEnum<SystemChannelFlags>,
     rules_channel_id: Option<ChannelId>,
     joined_at: Option<DateTime<FixedOffset>>,
     large: Option<bool>,
@@ -459,7 +496,7 @@ pub struct AvailableGuild {
     vanity_url_code: Option<String>,
     description: Option<String>,
     banner: Option<String>,
-    premium_tier: PremiumTier,
+    premium_tier: IntegerEnum<PremiumTier>,
     premium_subscription_count: Option<u64>,
     preferred_locale: String,
     public_updates_channel_id: Option<ChannelId>,
@@ -530,18 +567,36 @@ impl AvailableGuild {
         self.widget_channel_id
     }
 
+    pub fn try_verification_level(
+        &self,
+    ) -> Result<VerificationLevel, EnumFromIntegerError> {
+        self.verification_level.try_unwrap()
+    }
+
     pub fn verification_level(&self) -> VerificationLevel {
-        self.verification_level
+        self.verification_level.unwrap()
+    }
+
+    pub fn try_default_message_notifications(
+        &self,
+    ) -> Result<DefaultMessageNotificationLevel, EnumFromIntegerError> {
+        self.default_message_notifications.try_unwrap()
     }
 
     pub fn default_message_notifications(
         &self,
     ) -> DefaultMessageNotificationLevel {
-        self.default_message_notifications
+        self.default_message_notifications.unwrap()
+    }
+
+    pub fn try_explicit_content_filter(
+        &self,
+    ) -> Result<ExplicitContentFilterLevel, EnumFromIntegerError> {
+        self.explicit_content_filter.try_unwrap()
     }
 
     pub fn explicit_content_filter(&self) -> ExplicitContentFilterLevel {
-        self.explicit_content_filter
+        self.explicit_content_filter.unwrap()
     }
 
     pub fn roles(&self) -> &[Role] {
@@ -552,12 +607,22 @@ impl AvailableGuild {
         &self.emojis
     }
 
-    pub fn features(&self) -> &[GuildFeature] {
-        &self.features
+    pub fn try_features(
+        &self,
+    ) -> impl Iterator<Item = &StringEnum<GuildFeature>> {
+        self.features.iter()
+    }
+
+    pub fn features<'a>(&'a self) -> impl Iterator<Item = GuildFeature> + 'a {
+        self.features.iter().map(|x| x.unwrap())
+    }
+
+    pub fn try_mfa_level(&self) -> Result<MfaLevel, EnumFromIntegerError> {
+        self.mfa_level.try_unwrap()
     }
 
     pub fn mfa_level(&self) -> MfaLevel {
-        self.mfa_level
+        self.mfa_level.unwrap()
     }
 
     pub fn application_id(&self) -> Option<ApplicationId> {
@@ -568,8 +633,14 @@ impl AvailableGuild {
         self.system_channel_id
     }
 
-    pub fn system_channel_flags(&self) -> u64 {
-        self.system_channel_flags
+    pub fn try_system_channel_flags(
+        &self,
+    ) -> Result<SystemChannelFlags, EnumFromIntegerError> {
+        self.system_channel_flags.try_unwrap()
+    }
+
+    pub fn system_channel_flags(&self) -> SystemChannelFlags {
+        self.system_channel_flags.unwrap()
     }
 
     pub fn rules_channel_id(&self) -> Option<ChannelId> {
@@ -628,8 +699,14 @@ impl AvailableGuild {
         self.banner.as_deref()
     }
 
+    pub fn try_premium_tier(
+        &self,
+    ) -> Result<PremiumTier, EnumFromIntegerError> {
+        self.premium_tier.try_unwrap()
+    }
+
     pub fn premium_tier(&self) -> PremiumTier {
-        self.premium_tier
+        self.premium_tier.unwrap()
     }
 
     pub fn premium_subscription_count(&self) -> Option<u64> {
@@ -684,16 +761,13 @@ mod tests {
     fn deserialize_guild_features() {
         let json = json!(["ANIMATED_ICON", "BANNER", "FLOOP"]);
 
-        let features: Vec<GuildFeature> = serde_json::from_value(json).unwrap();
+        let features: Vec<StringEnum<GuildFeature>> =
+            serde_json::from_value(json).unwrap();
 
-        assert_eq!(
-            features,
-            &[
-                GuildFeature::AnimatedIcon,
-                GuildFeature::Banner,
-                GuildFeature::Other("FLOOP".into()),
-            ]
-        );
+        assert_eq!(features.len(), 3);
+        assert_eq!(features[0].unwrap(), GuildFeature::AnimatedIcon);
+        assert_eq!(features[1].unwrap(), GuildFeature::Banner);
+        assert_eq!(features[2].to_string(), "FLOOP");
     }
 
     #[test]
@@ -756,20 +830,17 @@ mod tests {
         assert!(avail.splash().is_none());
         assert!(avail.discovery_splash().is_none());
 
-        assert_eq!(
-            avail.features(),
-            &[
-                GuildFeature::AnimatedIcon,
-                GuildFeature::Verified,
-                GuildFeature::News,
-                GuildFeature::VanityUrl,
-                GuildFeature::Discoverable,
-                GuildFeature::Other("MORE_EMOJI".into()),
-                GuildFeature::InviteSplash,
-                GuildFeature::Banner,
-                GuildFeature::Community,
-            ]
-        );
+        let features: Vec<_> = avail.try_features().collect();
+        assert_eq!(features.len(), 9);
+        assert_eq!(features[0].unwrap(), GuildFeature::AnimatedIcon);
+        assert_eq!(features[1].unwrap(), GuildFeature::Verified);
+        assert_eq!(features[2].unwrap(), GuildFeature::News);
+        assert_eq!(features[3].unwrap(), GuildFeature::VanityUrl);
+        assert_eq!(features[4].unwrap(), GuildFeature::Discoverable);
+        assert_eq!(features[5].to_string(), "MORE_EMOJI");
+        assert_eq!(features[6].unwrap(), GuildFeature::InviteSplash);
+        assert_eq!(features[7].unwrap(), GuildFeature::Banner);
+        assert_eq!(features[8].unwrap(), GuildFeature::Community);
 
         assert!(avail.emojis().is_empty());
 
@@ -798,7 +869,7 @@ mod tests {
         assert_eq!(avail.vanity_url_code(), Some("discord-testers"));
         assert_eq!(avail.premium_tier(), PremiumTier::Tier3);
         assert_eq!(avail.premium_subscription_count(), Some(33));
-        assert_eq!(avail.system_channel_flags(), 0);
+        assert_eq!(avail.system_channel_flags(), SystemChannelFlags::empty());
         assert_eq!(avail.preferred_locale(), "en-US");
         assert_eq!(avail.rules_channel_id(), Some(441688182833020939.into()));
         assert_eq!(
