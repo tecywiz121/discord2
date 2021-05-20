@@ -3,6 +3,9 @@ use chrono::{DateTime, TimeZone};
 
 use educe::Educe;
 
+use serde::de::{self, DeserializeOwned, Unexpected, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 use std::cmp::{Eq, Ord};
 use std::convert::TryInto;
 use std::fmt::{self, Debug, Display};
@@ -25,6 +28,8 @@ pub trait Snowflake:
     + FromStr<Err = ParseIntError>
     + Sync
     + Send
+    + Serialize
+    + DeserializeOwned
 where
     u64: From<Self>,
 {
@@ -75,7 +80,7 @@ where
 )]
 pub struct Id<For> {
     #[educe(Debug(ignore))]
-    _p: PhantomData<*const For>,
+    _p: PhantomData<fn() -> For>,
     id: u64,
 }
 
@@ -111,16 +116,153 @@ impl<For> FromStr for Id<For> {
     }
 }
 
-unsafe impl<For> Send for Id<For> {}
-unsafe impl<For> Sync for Id<For> {}
+impl<For> Serialize for Id<For> {
+    fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.id.to_string().serialize(ser)
+    }
+}
+
+struct StringOrInteger;
+
+impl<'de> Visitor<'de> for StringOrInteger {
+    type Value = u64;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("a positive integer or string")
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_str(value.as_str())
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let value = u64::from_str(value)
+            .map_err(|_| E::invalid_value(Unexpected::Str(value), &self))?;
+
+        Ok(value)
+    }
+
+    fn visit_i8<E>(self, value: i8) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let value: u64 = value.try_into().map_err(|_| {
+            E::invalid_value(Unexpected::Signed(value.into()), &self)
+        })?;
+        Ok(value)
+    }
+
+    fn visit_i16<E>(self, value: i16) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let value: u64 = value.try_into().map_err(|_| {
+            E::invalid_value(Unexpected::Signed(value.into()), &self)
+        })?;
+        Ok(value)
+    }
+
+    fn visit_i32<E>(self, value: i32) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let value: u64 = value.try_into().map_err(|_| {
+            E::invalid_value(Unexpected::Signed(value.into()), &self)
+        })?;
+        Ok(value)
+    }
+
+    fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let value: u64 = value
+            .try_into()
+            .map_err(|_| E::invalid_value(Unexpected::Signed(value), &self))?;
+        Ok(value)
+    }
+
+    fn visit_u8<E>(self, value: u8) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let value: u64 = value.try_into().map_err(|_| {
+            E::invalid_value(Unexpected::Unsigned(value.into()), &self)
+        })?;
+        Ok(value)
+    }
+
+    fn visit_u16<E>(self, value: u16) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let value: u64 = value.try_into().map_err(|_| {
+            E::invalid_value(Unexpected::Unsigned(value.into()), &self)
+        })?;
+        Ok(value)
+    }
+
+    fn visit_u32<E>(self, value: u32) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let value: u64 = value.try_into().map_err(|_| {
+            E::invalid_value(Unexpected::Unsigned(value.into()), &self)
+        })?;
+        Ok(value)
+    }
+
+    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(value)
+    }
+}
+
+impl<'de, For> Deserialize<'de> for Id<For> {
+    fn deserialize<D>(de: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let id = de.deserialize_any(StringOrInteger)?;
+
+        Ok(Self {
+            _p: PhantomData,
+            id,
+        })
+    }
+}
 
 impl<For> Snowflake for Id<For> {}
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
 
-    #[derive(Debug, PartialOrd, PartialEq, Ord, Eq, Clone, Copy, Hash)]
+    #[derive(
+        Debug,
+        PartialOrd,
+        PartialEq,
+        Ord,
+        Eq,
+        Clone,
+        Copy,
+        Hash,
+        Serialize,
+        Deserialize,
+    )]
     struct TestSnowflake(u64);
 
     impl Snowflake for TestSnowflake {}
@@ -184,5 +326,41 @@ mod tests {
         let expected = Utc.ymd(2016, 4, 30).and_hms_milli(11, 18, 25, 796);
         let s = TestSnowflake::from_date_time(&expected).unwrap();
         assert_eq!(s.timestamp(), expected);
+    }
+
+    #[test]
+    fn deserialize_string() {
+        #[derive(Debug, Serialize, Deserialize)]
+        struct Sample {
+            id: SampleId,
+        }
+
+        type SampleId = Id<Sample>;
+
+        let json = json!({
+            "id": "123456799",
+        });
+
+        let sample: Sample = serde_json::from_value(json).unwrap();
+
+        assert_eq!(sample.id, SampleId::from(123456799));
+    }
+
+    #[test]
+    fn deserialize_integer() {
+        #[derive(Debug, Serialize, Deserialize)]
+        struct Sample {
+            id: SampleId,
+        }
+
+        type SampleId = Id<Sample>;
+
+        let json = json!({
+            "id": 123456799,
+        });
+
+        let sample: Sample = serde_json::from_value(json).unwrap();
+
+        assert_eq!(sample.id, SampleId::from(123456799));
     }
 }

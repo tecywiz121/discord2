@@ -1,1 +1,20 @@
+pub mod application;
+pub mod audit_log;
+pub mod channel;
+mod discord;
+pub mod emoji;
+pub mod game_sdk;
+pub mod gateway;
+pub mod guild;
+pub mod guild_template;
+pub mod invite;
+pub mod permissions;
 pub mod snowflake;
+pub mod stage_instance;
+mod str;
+pub mod teams;
+pub mod user;
+pub mod voice;
+pub mod webhook;
+
+pub use self::discord::{Config, Discord, Error, Token};
