@@ -1,28 +1,34 @@
 use discord2::application::*;
+use discord2::guild::GuildId;
 use discord2::{Config, Discord, Error, Token};
 
 use std::env::var;
+use std::str::FromStr;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Error> {
     let token = var("DISCORD_BOT_TOKEN").unwrap();
+    let guild_id = var("DISCORD_GUILD_ID").unwrap();
+
     let config = Config::builder().token(Token::bot(token)).build();
 
     let discord = Discord::new(&config)?;
+
+    let guild_id = GuildId::from_str(&guild_id).unwrap();
 
     let me = discord.get_current_user().await?;
 
     // List existing commands.
     let current = discord
-        .get_global_application_commands(me.id().into())
+        .get_guild_application_commands(me.id().into(), guild_id)
         .await?;
 
     println!("Current Commands: {:#?}", current);
 
-    // Create a single command: `/hello`
+    // Create a single command: `/guild-hello`
     let cmd = NewApplicationCommand::builder()
-        .name("hello")
-        .description("this is a command")
+        .name("guild-hello")
+        .description("this is a guild command")
         .options([ApplicationCommandOption::builder()
             .kind(ApplicationCommandOptionKind::String)
             .name("who")
@@ -42,25 +48,30 @@ async fn main() -> Result<(), Error> {
         .build();
 
     let created = discord
-        .create_global_application_command(me.id().into(), &cmd)
+        .create_guild_application_command(me.id().into(), guild_id, &cmd)
         .await?;
 
     println!("Created Command: {:#?}", created);
 
-    // Update the `/hello` command with a new description.
+    // Update the `/guild-hello` command with a new description.
     let cmd2 = EditApplicationCommand::builder()
-        .description("this is an updated command")
+        .description("this is an updated guild command")
         .build();
 
     let edited = discord
-        .edit_global_application_command(me.id().into(), created.id(), &cmd2)
+        .edit_guild_application_command(
+            me.id().into(),
+            guild_id,
+            created.id(),
+            &cmd2,
+        )
         .await?;
 
     println!("\nEdited Command: {:#?}", edited);
 
-    // Delete the `/hello` command.
+    // Delete the `/guild-hello` command.
     discord
-        .delete_global_application_command(me.id().into(), edited.id())
+        .delete_guild_application_command(me.id().into(), guild_id, edited.id())
         .await?;
 
     println!("\nCommand Deleted.");
@@ -69,13 +80,13 @@ async fn main() -> Result<(), Error> {
     let commands: &[_] = &[
         cmd,
         NewApplicationCommand::builder()
-            .name("goodbye")
-            .description("this is another command")
+            .name("guild-goodbye")
+            .description("this is another guild command")
             .build(),
     ];
 
     let created = discord
-        .create_global_application_commands(me.id().into(), commands)
+        .create_guild_application_commands(me.id().into(), guild_id, commands)
         .await?;
 
     println!("\nCreated commands: {:#?}", created);

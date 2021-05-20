@@ -44,6 +44,7 @@ use crate::application::{
     EditApplicationCommand, NewApplicationCommand,
 };
 use crate::channel::{Channel, ChannelId, Message, MessageId};
+use crate::guild::GuildId;
 use crate::str::obscure;
 use crate::user::User;
 
@@ -257,6 +258,16 @@ impl Discord {
         self.get(path).await
     }
 
+    pub async fn get_global_application_command(
+        &self,
+        application_id: ApplicationId,
+        command_id: ApplicationCommandId,
+    ) -> Result<ApplicationCommand, Error> {
+        let path =
+            format!("applications/{}/commands/{}", application_id, command_id);
+        self.get(path).await
+    }
+
     pub async fn create_global_application_commands(
         &self,
         application_id: ApplicationId,
@@ -294,6 +305,84 @@ impl Discord {
         let path =
             format!("applications/{}/commands/{}", application_id, command_id);
         self.delete(path).await
+    }
+
+    pub async fn get_guild_application_commands(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+    ) -> Result<Vec<ApplicationCommand>, Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands",
+            application_id, guild_id
+        );
+        self.get(path).await
+    }
+
+    pub async fn create_guild_application_command(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+        new_command: &NewApplicationCommand,
+    ) -> Result<ApplicationCommand, Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands",
+            application_id, guild_id
+        );
+        self.post(path, new_command).await
+    }
+
+    pub async fn get_guild_application_command(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+        command_id: ApplicationCommandId,
+    ) -> Result<ApplicationCommand, Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands/{}",
+            application_id, guild_id, command_id
+        );
+        self.get(path).await
+    }
+
+    pub async fn edit_guild_application_command(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+        command_id: ApplicationCommandId,
+        edit_command: &EditApplicationCommand,
+    ) -> Result<ApplicationCommand, Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands/{}",
+            application_id, guild_id, command_id
+        );
+        self.patch(path, edit_command).await
+    }
+
+    pub async fn delete_guild_application_command(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+        command_id: ApplicationCommandId,
+    ) -> Result<(), Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands/{}",
+            application_id, guild_id, command_id
+        );
+        self.delete(path).await
+    }
+
+    pub async fn create_guild_application_commands(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+        new_commands: &[NewApplicationCommand],
+    ) -> Result<Vec<ApplicationCommand>, Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands",
+            application_id, guild_id
+        );
+        self.put(path, &new_commands).await
     }
 
     pub async fn get_current_user(&self) -> Result<User, Error> {
