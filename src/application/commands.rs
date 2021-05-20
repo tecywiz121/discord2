@@ -159,6 +159,32 @@ pub struct ApplicationCommand {
     default_permission: Option<bool>,
 }
 
+impl ApplicationCommand {
+    pub fn id(&self) -> ApplicationCommandId {
+        self.id
+    }
+
+    pub fn application_id(&self) -> ApplicationId {
+        self.application_id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn options(&self) -> Option<&[ApplicationCommandOption]> {
+        self.options.as_deref()
+    }
+
+    pub fn default_permission(&self) -> Option<bool> {
+        self.default_permission
+    }
+}
+
 #[derive(Debug, Clone, Serialize, TypedBuilder)]
 pub struct NewApplicationCommand {
     #[builder(setter(into))]
@@ -171,5 +197,25 @@ pub struct NewApplicationCommand {
     options: Option<Vec<ApplicationCommandOption>>,
 
     #[builder(default, setter(strip_option, into))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_permission: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, TypedBuilder)]
+pub struct EditApplicationCommand {
+    #[builder(default, setter(into, strip_option))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+
+    #[builder(default, setter(into, strip_option))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+
+    #[builder(default, setter(strip_option, into))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    options: Option<Vec<ApplicationCommandOption>>,
+
+    #[builder(default, setter(strip_option, into))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     default_permission: Option<bool>,
 }

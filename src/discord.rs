@@ -40,7 +40,8 @@ mod error {
 }
 
 use crate::application::{
-    ApplicationCommand, ApplicationId, NewApplicationCommand,
+    ApplicationCommand, ApplicationCommandId, ApplicationId,
+    EditApplicationCommand, NewApplicationCommand,
 };
 use crate::channel::{Channel, ChannelId, Message, MessageId};
 use crate::str::obscure;
@@ -185,6 +186,48 @@ impl Discord {
         }
     }
 
+    async fn delete<S>(&self, path: S) -> Result<(), Error>
+    where
+        S: AsRef<str>,
+    {
+        let url = self.url(path);
+        let response = self.client.delete(url).send().await?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            let err: DiscordError = response.json().await?;
+
+            error::Discord {
+                code: err.code,
+                message: err.message,
+            }
+            .fail()
+        }
+    }
+
+    async fn patch<S, B, T>(&self, path: S, body: &B) -> Result<T, Error>
+    where
+        S: AsRef<str>,
+        T: DeserializeOwned,
+        B: Serialize,
+    {
+        let url = self.url(path);
+        let response = self.client.patch(url).json(body).send().await?;
+        self.handle_response(response).await
+    }
+
+    async fn put<S, B, T>(&self, path: S, body: &B) -> Result<T, Error>
+    where
+        S: AsRef<str>,
+        T: DeserializeOwned,
+        B: Serialize,
+    {
+        let url = self.url(path);
+        let response = self.client.put(url).json(body).send().await?;
+        self.handle_response(response).await
+    }
+
     async fn post<S, B, T>(&self, path: S, body: &B) -> Result<T, Error>
     where
         S: AsRef<str>,
@@ -214,6 +257,15 @@ impl Discord {
         self.get(path).await
     }
 
+    pub async fn create_global_application_commands(
+        &self,
+        application_id: ApplicationId,
+        new_commands: &[NewApplicationCommand],
+    ) -> Result<Vec<ApplicationCommand>, Error> {
+        let path = format!("applications/{}/commands", application_id);
+        self.put(path, &new_commands).await
+    }
+
     pub async fn create_global_application_command(
         &self,
         application_id: ApplicationId,
@@ -221,6 +273,27 @@ impl Discord {
     ) -> Result<ApplicationCommand, Error> {
         let path = format!("applications/{}/commands", application_id);
         self.post(path, new_command).await
+    }
+
+    pub async fn edit_global_application_command(
+        &self,
+        application_id: ApplicationId,
+        command_id: ApplicationCommandId,
+        edit_command: &EditApplicationCommand,
+    ) -> Result<ApplicationCommand, Error> {
+        let path =
+            format!("applications/{}/commands/{}", application_id, command_id);
+        self.patch(path, edit_command).await
+    }
+
+    pub async fn delete_global_application_command(
+        &self,
+        application_id: ApplicationId,
+        command_id: ApplicationCommandId,
+    ) -> Result<(), Error> {
+        let path =
+            format!("applications/{}/commands/{}", application_id, command_id);
+        self.delete(path).await
     }
 
     pub async fn get_current_user(&self) -> Result<User, Error> {
