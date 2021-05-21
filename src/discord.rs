@@ -45,10 +45,11 @@ use crate::application::{
     EditGuildApplicationCommandPermissions, GuildApplicationCommandPermissions,
     NewApplicationCommand,
 };
+use crate::audit_log::{AuditLog, AuditLogEntryId, AuditLogEvent};
 use crate::channel::{Channel, ChannelId, Message, MessageId};
 use crate::guild::GuildId;
 use crate::str::obscure;
-use crate::user::User;
+use crate::user::{User, UserId};
 
 use educe::Educe;
 
@@ -455,6 +456,38 @@ impl Discord {
         );
 
         self.put(path, &permissions).await
+    }
+
+    pub async fn get_guild_audit_log(
+        &self,
+        guild_id: GuildId,
+        user_id: Option<UserId>,
+        action_type: Option<AuditLogEvent>,
+        before: Option<AuditLogEntryId>,
+        limit: Option<u64>,
+    ) -> Result<AuditLog, Error> {
+        let mut path = format!("guilds/{}/audit-logs", guild_id);
+
+        let user_id = user_id.map(|u| format!("user_id={}", u));
+        let action_type =
+            action_type.map(|u| format!("action_type={}", u64::from(u)));
+        let before = before.map(|u| format!("before={}", u));
+        let limit = limit.map(|u| format!("limit={}", u));
+
+        let query = user_id
+            .into_iter()
+            .chain(action_type.into_iter())
+            .chain(before.into_iter())
+            .chain(limit.into_iter())
+            .collect::<Vec<_>>()
+            .join("&");
+
+        if !query.is_empty() {
+            path.push('?');
+            path.push_str(&query);
+        }
+
+        self.get(path).await
     }
 
     pub async fn get_current_user(&self) -> Result<User, Error> {

@@ -25,7 +25,7 @@ pub struct Role {
     color: u32,
     hoist: bool,
     position: u64,
-    permissions: String,
+    permissions: String, // TODO: Type-ify
     managed: bool,
     mentionable: bool,
     tags: Option<Vec<RoleTag>>,

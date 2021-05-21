@@ -37,7 +37,7 @@ pub trait Snowflake:
 where
     u64: From<Self>,
 {
-    fn from_date_time<Tz: TimeZone>(dt: &DateTime<Tz>) -> Option<Self> {
+    fn from_date_time<Tz: TimeZone>(dt: DateTime<Tz>) -> Option<Self> {
         let unix_ms: u64 = dt.timestamp_millis().try_into().ok()?;
         let discord_ms = unix_ms.checked_sub(EPOCH)?;
         Some(Self::from(discord_ms << 22))
@@ -249,6 +249,84 @@ impl<'de, For> Deserialize<'de> for Id<For> {
 
 impl<For> Snowflake for Id<For> {}
 
+#[derive(Educe)]
+#[educe(
+    Debug(named_field = false),
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Clone,
+    Copy
+)]
+pub struct AnyId {
+    id: u64,
+}
+
+impl From<AnyId> for u64 {
+    fn from(id: AnyId) -> Self {
+        id.id
+    }
+}
+
+impl From<u64> for AnyId {
+    fn from(id: u64) -> Self {
+        Self { id }
+    }
+}
+
+impl<T> From<Id<T>> for AnyId {
+    fn from(id: Id<T>) -> AnyId {
+        Self { id: id.id }
+    }
+}
+
+impl<T> From<AnyId> for Id<T> {
+    fn from(id: AnyId) -> Id<T> {
+        Self {
+            id: id.id,
+            _p: PhantomData,
+        }
+    }
+}
+
+impl Display for AnyId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&self.id, f)
+    }
+}
+
+impl FromStr for AnyId {
+    type Err = ParseIntError;
+
+    fn from_str(txt: &str) -> Result<Self, Self::Err> {
+        Ok(Self { id: txt.parse()? })
+    }
+}
+
+impl Serialize for AnyId {
+    fn serialize<S>(&self, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.id.to_string().serialize(ser)
+    }
+}
+
+impl<'de> Deserialize<'de> for AnyId {
+    fn deserialize<D>(de: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let id = de.deserialize_any(StringOrInteger)?;
+
+        Ok(Self { id })
+    }
+}
+
+impl Snowflake for AnyId {}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -328,7 +406,7 @@ mod tests {
     #[test]
     fn from_date_time() {
         let expected = Utc.ymd(2016, 4, 30).and_hms_milli(11, 18, 25, 796);
-        let s = TestSnowflake::from_date_time(&expected).unwrap();
+        let s = TestSnowflake::from_date_time(expected).unwrap();
         assert_eq!(s.timestamp(), expected);
     }
 
