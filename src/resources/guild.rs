@@ -8,17 +8,17 @@ use bitflags::bitflags;
 
 use chrono::{DateTime, FixedOffset};
 
-use crate::application::ApplicationId;
-use crate::channel::{Channel, ChannelId};
-use crate::emoji::{Emoji, EmojiId};
 use crate::enums::{
     EnumFromIntegerError, IntegerEnum, ParseEnumError, StringEnum,
 };
 use crate::gateway::PresenceUpdateEvent;
 use crate::permissions::{Role, RoleId};
+use crate::resources::application::ApplicationId;
+use crate::resources::channel::{Channel, ChannelId};
+use crate::resources::emoji::{Emoji, EmojiId};
+use crate::resources::user::{User, UserId};
+use crate::resources::voice::VoiceState;
 use crate::snowflake::Id;
-use crate::user::{User, UserId};
-use crate::voice::VoiceState;
 
 pub use self::integration::*;
 

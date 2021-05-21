@@ -2,12 +2,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::application::ApplicationId;
-use crate::channel::{Channel, ChannelId};
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
-use crate::guild::GuildId;
+use crate::resources::application::ApplicationId;
+use crate::resources::channel::{Channel, ChannelId};
+use crate::resources::guild::GuildId;
+use crate::resources::user::User;
 use crate::snowflake::Id;
-use crate::user::User;
 
 use serde::{Deserialize, Serialize};
 
@@ -141,7 +141,7 @@ impl From<WebhookKind> for u64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::user::UserFlags;
+    use crate::resources::user::UserFlags;
 
     use super::*;
 

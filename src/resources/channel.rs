@@ -9,12 +9,12 @@ use bitflags::bitflags;
 
 use chrono::{DateTime, FixedOffset};
 
-use crate::application::ApplicationId;
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
-use crate::guild::GuildId;
 use crate::permissions::RoleId;
+use crate::resources::application::ApplicationId;
+use crate::resources::guild::GuildId;
+use crate::resources::user::{User, UserId};
 use crate::snowflake::Id;
-use crate::user::{User, UserId};
 
 pub use self::embed::*;
 pub use self::message::*;

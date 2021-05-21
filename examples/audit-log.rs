@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Utc};
 
-use discord2::audit_log::AuditLogEvent;
-use discord2::guild::GuildId;
+use discord2::resources::audit_log::AuditLogEvent;
+use discord2::resources::guild::GuildId;
 use discord2::snowflake::Snowflake;
 use discord2::{Config, Discord, Error, Token};
 

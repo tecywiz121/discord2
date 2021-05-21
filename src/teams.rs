@@ -3,8 +3,8 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
+use crate::resources::user::{User, UserId};
 use crate::snowflake::Id;
-use crate::user::{User, UserId};
 
 use serde::{Deserialize, Serialize};
 

@@ -2,54 +2,19 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-mod error {
-    use snafu::{Backtrace, IntoError, Snafu};
+mod error;
 
-    #[derive(Debug, Snafu)]
-    #[snafu(visibility = "pub(super)")]
-    #[non_exhaustive]
-    pub enum Error {
-        InvalidConfig {
-            source: Box<dyn std::error::Error + 'static>,
-            backtrace: Backtrace,
-        },
-
-        Reqwest {
-            source: Box<dyn std::error::Error + 'static>,
-            backtrace: Backtrace,
-        },
-
-        Discord {
-            code: Option<u64>,
-            message: Option<String>,
-            backtrace: Backtrace,
-        },
-    }
-
-    impl From<reqwest::header::InvalidHeaderValue> for Error {
-        fn from(err: reqwest::header::InvalidHeaderValue) -> Self {
-            InvalidConfig {}.into_error(Box::new(err))
-        }
-    }
-
-    impl From<reqwest::Error> for Error {
-        fn from(err: reqwest::Error) -> Self {
-            Reqwest {}.into_error(Box::new(err))
-        }
-    }
-}
-
-use crate::application::{
+use crate::resources::application::{
     ApplicationCommand, ApplicationCommandId, ApplicationCommandPermission,
     ApplicationId, EditApplicationCommand,
     EditGuildApplicationCommandPermissions, GuildApplicationCommandPermissions,
     NewApplicationCommand,
 };
-use crate::audit_log::{AuditLog, AuditLogEntryId, AuditLogEvent};
-use crate::channel::{Channel, ChannelId, Message, MessageId};
-use crate::guild::GuildId;
+use crate::resources::audit_log::{AuditLog, AuditLogEntryId, AuditLogEvent};
+use crate::resources::channel::{Channel, ChannelId, Message, MessageId};
+use crate::resources::guild::GuildId;
+use crate::resources::user::{User, UserId};
 use crate::str::obscure;
-use crate::user::{User, UserId};
 
 use educe::Educe;
 

@@ -2,14 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-mod discord;
-pub mod enums;
-pub mod game_sdk;
-pub mod gateway;
-pub mod permissions;
-pub mod resources;
-pub mod snowflake;
-mod str;
-pub mod teams;
-
-pub use self::discord::{Config, Discord, Error, Token};
+pub mod application;
+pub mod audit_log;
+pub mod channel;
+pub mod emoji;
+pub mod guild;
+pub mod guild_template;
+pub mod invite;
+pub mod stage_instance;
+pub mod user;
+pub mod voice;
+pub mod webhook;

@@ -1,4 +1,4 @@
-use discord2::channel::{ChannelId, MessageId};
+use discord2::resources::channel::{ChannelId, MessageId};
 use discord2::{Config, Discord, Error, Token};
 
 use std::env::var;

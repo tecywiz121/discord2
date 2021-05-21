@@ -4,12 +4,12 @@
 
 use bitflags::bitflags;
 
-use crate::channel::{AllowedMentions, Embed};
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
-use crate::guild::GuildId;
 use crate::permissions::RoleId;
+use crate::resources::channel::{AllowedMentions, Embed};
+use crate::resources::guild::GuildId;
+use crate::resources::user::UserId;
 use crate::snowflake::Id;
-use crate::user::UserId;
 
 use serde::{Deserialize, Serialize};
 

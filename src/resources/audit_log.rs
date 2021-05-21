@@ -27,20 +27,20 @@ mod error {
     }
 }
 
-use crate::application::ApplicationId;
-use crate::channel::{ChannelId, ChannelKind, MessageId, Overwrite};
 use crate::enums::{
     EnumFromIntegerError, IntegerEnum, ParseEnumError, StringEnum,
 };
-use crate::guild::{
+use crate::permissions::RoleId;
+use crate::resources::application::ApplicationId;
+use crate::resources::channel::{ChannelId, ChannelKind, MessageId, Overwrite};
+use crate::resources::guild::{
     DefaultMessageNotificationLevel, ExplicitContentFilterLevel,
     IntegrationAccount, IntegrationExpireBehavior, IntegrationId, MfaLevel,
     VerificationLevel,
 };
-use crate::permissions::RoleId;
+use crate::resources::user::{User, UserId};
+use crate::resources::webhook::Webhook;
 use crate::snowflake::{AnyId, Id};
-use crate::user::{User, UserId};
-use crate::webhook::Webhook;
 
 pub use self::error::FromRawAuditLogChangeError;
 

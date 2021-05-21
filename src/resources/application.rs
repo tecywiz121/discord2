@@ -8,10 +8,10 @@ use bitflags::bitflags;
 
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::game_sdk::SkuId;
-use crate::guild::GuildId;
+use crate::resources::guild::GuildId;
+use crate::resources::user::User;
 use crate::snowflake::Id;
 use crate::teams::Team;
-use crate::user::User;
 
 pub use self::commands::*;
 

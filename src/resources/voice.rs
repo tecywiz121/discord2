@@ -4,9 +4,9 @@
 
 use chrono::{DateTime, FixedOffset};
 
-use crate::channel::ChannelId;
-use crate::guild::{GuildId, GuildMember};
-use crate::user::UserId;
+use crate::resources::channel::ChannelId;
+use crate::resources::guild::{GuildId, GuildMember};
+use crate::resources::user::UserId;
 
 use serde::{Deserialize, Serialize};
 

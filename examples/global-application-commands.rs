@@ -1,4 +1,4 @@
-use discord2::application::*;
+use discord2::resources::application::*;
 use discord2::{Config, Discord, Error, Token};
 
 use std::env::var;

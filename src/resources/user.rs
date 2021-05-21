@@ -4,8 +4,8 @@
 
 use bitflags::bitflags;
 
-use crate::application::ApplicationId;
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
+use crate::resources::application::ApplicationId;
 use crate::snowflake::Id;
 
 use serde::{Deserialize, Serialize};

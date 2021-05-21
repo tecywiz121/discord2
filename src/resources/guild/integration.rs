@@ -6,8 +6,8 @@ use chrono::{DateTime, FixedOffset};
 
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::permissions::RoleId;
+use crate::resources::user::User;
 use crate::snowflake::Id;
-use crate::user::User;
 
 use serde::{Deserialize, Serialize};
 

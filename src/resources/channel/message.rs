@@ -6,16 +6,16 @@ use bitflags::bitflags;
 
 use chrono::{DateTime, FixedOffset};
 
-use crate::application::{Application, ApplicationId};
-use crate::emoji::Emoji;
 use crate::enums::{
     EnumFromIntegerError, IntegerEnum, ParseEnumError, StringEnum,
 };
-use crate::guild::{GuildId, GuildMember};
 use crate::permissions::RoleId;
+use crate::resources::application::{Application, ApplicationId};
+use crate::resources::emoji::Emoji;
+use crate::resources::guild::{GuildId, GuildMember};
+use crate::resources::user::{User, UserId};
+use crate::resources::webhook::WebhookId;
 use crate::snowflake::Id;
-use crate::user::{User, UserId};
-use crate::webhook::WebhookId;
 
 use serde::{Deserialize, Serialize};
 

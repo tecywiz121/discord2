@@ -2,10 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use crate::channel::ChannelId;
-use crate::guild::IntegrationId;
+use crate::resources::channel::ChannelId;
+use crate::resources::guild::IntegrationId;
+use crate::resources::user::BotId;
 use crate::snowflake::Id;
-use crate::user::BotId;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
