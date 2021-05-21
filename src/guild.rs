@@ -426,7 +426,7 @@ impl TryFrom<u64> for SystemChannelFlags {
     type Error = EnumFromIntegerError;
 
     fn try_from(u: u64) -> Result<Self, Self::Error> {
-        Self::from_bits(u).ok_or(Self::Error::new(u))
+        Self::from_bits(u).ok_or_else(|| Self::Error::new(u))
     }
 }
 
@@ -613,7 +613,7 @@ impl AvailableGuild {
         self.features.iter()
     }
 
-    pub fn features<'a>(&'a self) -> impl Iterator<Item = GuildFeature> + 'a {
+    pub fn features(&self) -> impl Iterator<Item = GuildFeature> + '_ {
         self.features.iter().map(|x| x.unwrap())
     }
 

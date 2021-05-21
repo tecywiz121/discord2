@@ -73,7 +73,7 @@ where
     pub fn try_unwrap(&self) -> Result<T, ParseEnumError> {
         match &self.0 {
             Inner::Raw(raw) => Err(ParseEnumError { raw: raw.clone() }),
-            Inner::Parsed(p) => Ok(p.clone()),
+            Inner::Parsed(p) => Ok(*p),
         }
     }
 }

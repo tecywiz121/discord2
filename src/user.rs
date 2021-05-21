@@ -115,7 +115,7 @@ impl TryFrom<u64> for UserFlags {
     type Error = EnumFromIntegerError;
 
     fn try_from(u: u64) -> Result<Self, Self::Error> {
-        Self::from_bits(u).ok_or(Self::Error::new(u))
+        Self::from_bits(u).ok_or_else(|| Self::Error::new(u))
     }
 }
 
