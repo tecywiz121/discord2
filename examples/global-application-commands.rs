@@ -75,7 +75,7 @@ async fn main() -> Result<(), Error> {
     ];
 
     let created = discord
-        .create_global_application_commands(me.id().into(), commands)
+        .create_all_global_application_commands(me.id().into(), commands)
         .await?;
 
     println!("\nCreated commands: {:#?}", created);

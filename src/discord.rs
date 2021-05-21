@@ -40,8 +40,10 @@ mod error {
 }
 
 use crate::application::{
-    ApplicationCommand, ApplicationCommandId, ApplicationId,
-    EditApplicationCommand, NewApplicationCommand,
+    ApplicationCommand, ApplicationCommandId, ApplicationCommandPermission,
+    ApplicationId, EditApplicationCommand,
+    EditGuildApplicationCommandPermissions, GuildApplicationCommandPermissions,
+    NewApplicationCommand,
 };
 use crate::channel::{Channel, ChannelId, Message, MessageId};
 use crate::guild::GuildId;
@@ -175,6 +177,9 @@ impl Discord {
         T: DeserializeOwned,
     {
         if response.status().is_success() {
+            //let json: serde_json::Value = response.json().await?;
+            //eprintln!("json: {}", json);
+            //Ok(serde_json::from_value(json).unwrap())
             Ok(response.json().await?)
         } else {
             let err: DiscordError = response.json().await?;
@@ -268,7 +273,7 @@ impl Discord {
         self.get(path).await
     }
 
-    pub async fn create_global_application_commands(
+    pub async fn create_all_global_application_commands(
         &self,
         application_id: ApplicationId,
         new_commands: &[NewApplicationCommand],
@@ -372,7 +377,7 @@ impl Discord {
         self.delete(path).await
     }
 
-    pub async fn create_guild_application_commands(
+    pub async fn create_all_guild_application_commands(
         &self,
         application_id: ApplicationId,
         guild_id: GuildId,
@@ -383,6 +388,73 @@ impl Discord {
             application_id, guild_id
         );
         self.put(path, &new_commands).await
+    }
+
+    // TODO: create_interaction_response
+    // TODO: get_original_interaction_response
+    // TODO: edit_original_interaction_response
+    // TODO: delete_original_interaction_response
+    // TODO: create_followup_message
+    // TODO: edit_followup_message
+    // TODO: delete_followup_message
+
+    pub async fn get_guild_application_command_permissions(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+    ) -> Result<Vec<GuildApplicationCommandPermissions>, Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands/permissions",
+            application_id, guild_id
+        );
+        self.get(path).await
+    }
+
+    pub async fn get_application_command_permissions(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+        command_id: ApplicationCommandId,
+    ) -> Result<GuildApplicationCommandPermissions, Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands/{}/permissions",
+            application_id, guild_id, command_id,
+        );
+        self.get(path).await
+    }
+
+    pub async fn edit_application_command_permissions(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+        command_id: ApplicationCommandId,
+        permissions: &[ApplicationCommandPermission],
+    ) -> Result<GuildApplicationCommandPermissions, Error> {
+        #[derive(Debug, Serialize)]
+        struct Request<'a> {
+            permissions: &'a [ApplicationCommandPermission],
+        }
+
+        let path = format!(
+            "applications/{}/guilds/{}/commands/{}/permissions",
+            application_id, guild_id, command_id,
+        );
+
+        self.put(path, &Request { permissions }).await
+    }
+
+    pub async fn edit_all_application_command_permissions(
+        &self,
+        application_id: ApplicationId,
+        guild_id: GuildId,
+        permissions: &[EditGuildApplicationCommandPermissions],
+    ) -> Result<GuildApplicationCommandPermissions, Error> {
+        let path = format!(
+            "applications/{}/guilds/{}/commands/permissions",
+            application_id, guild_id
+        );
+
+        self.put(path, &permissions).await
     }
 
     pub async fn get_current_user(&self) -> Result<User, Error> {

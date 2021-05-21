@@ -86,10 +86,40 @@ async fn main() -> Result<(), Error> {
     ];
 
     let created = discord
-        .create_guild_application_commands(me.id().into(), guild_id, commands)
+        .create_all_guild_application_commands(
+            me.id().into(),
+            guild_id,
+            commands,
+        )
         .await?;
 
     println!("\nCreated commands: {:#?}", created);
+
+    // Set the specific permissions for a command.
+    let eperms = discord
+        .edit_application_command_permissions(
+            me.id().into(),
+            guild_id,
+            created[0].id(),
+            &[ApplicationCommandPermission::builder()
+                .id(me.id())
+                .permission(false)
+                .build()],
+        )
+        .await?;
+
+    println!("\nEdited permissions: {:#?}", eperms);
+
+    // Get the specific permissions for a command.
+    let perms = discord
+        .get_application_command_permissions(
+            me.id().into(),
+            guild_id,
+            created[0].id(),
+        )
+        .await?;
+
+    println!("\nCommand permissions: {:#?}", perms);
 
     Ok(())
 }

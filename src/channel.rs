@@ -16,6 +16,7 @@ use crate::permissions::RoleId;
 use crate::snowflake::Id;
 use crate::user::{User, UserId};
 
+pub use self::embed::*;
 pub use self::message::*;
 
 use serde::{Deserialize, Serialize};
@@ -132,7 +133,44 @@ impl From<VideoQualityMode> for u64 {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+struct OverwriteIdHelper {
+    id: Id<()>,
+    #[serde(rename = "type")]
+    kind: u64,
+}
+
+impl From<OverwriteId> for OverwriteIdHelper {
+    fn from(oid: OverwriteId) -> Self {
+        match oid {
+            OverwriteId::Role(rid) => Self {
+                id: u64::from(rid).into(),
+                kind: 0,
+            },
+            OverwriteId::Member(uid) => Self {
+                id: u64::from(uid).into(),
+                kind: 1,
+            },
+        }
+    }
+}
+
+impl From<OverwriteIdHelper> for OverwriteId {
+    fn from(oih: OverwriteIdHelper) -> Self {
+        match oih {
+            OverwriteIdHelper { id, kind: 0 } => {
+                Self::Role(u64::from(id).into())
+            }
+            OverwriteIdHelper { id, kind: 1 } => {
+                Self::Member(u64::from(id).into())
+            }
+            _ => panic!("unsupported overwrite id"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Serialize, Deserialize)]
+#[serde(into = "OverwriteIdHelper", from = "OverwriteIdHelper")]
 pub enum OverwriteId {
     Role(RoleId),
     Member(UserId),
@@ -150,20 +188,15 @@ impl OverwriteId {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Overwrite {
-    id: u64,
-    #[serde(rename = "type")]
-    kind: u64,
+    #[serde(flatten)]
+    id: OverwriteId,
     allow: String,
     deny: String,
 }
 
 impl Overwrite {
     pub fn id(&self) -> OverwriteId {
-        match self.kind {
-            0 => OverwriteId::Role(RoleId::from(self.id)),
-            1 => OverwriteId::Member(UserId::from(self.id)),
-            _ => panic!("unknown role type"),
-        }
+        self.id
     }
 
     pub fn allow(&self) -> &str {

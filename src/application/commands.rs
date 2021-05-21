@@ -2,8 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use bitflags::bitflags;
+
+use crate::channel::{AllowedMentions, Embed};
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
+use crate::guild::GuildId;
+use crate::permissions::RoleId;
 use crate::snowflake::Id;
+use crate::user::UserId;
 
 use serde::{Deserialize, Serialize};
 
@@ -221,4 +227,279 @@ pub struct EditApplicationCommand {
     #[builder(default, setter(strip_option, into))]
     #[serde(skip_serializing_if = "Option::is_none")]
     default_permission: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
+pub struct InteractionResponse {
+    #[serde(rename = "type")]
+    #[builder(setter(into))]
+    kind: IntegerEnum<InteractionCallbackKind>,
+
+    #[builder(default, setter(strip_option, into))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<InteractionApplicationCommandCallbackData>,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum InteractionCallbackKind {
+    Pong,
+    ChannelMessageWithSource,
+    DeferredChannelMessageWithSource,
+}
+
+impl From<InteractionCallbackKind> for u64 {
+    fn from(kind: InteractionCallbackKind) -> u64 {
+        match kind {
+            InteractionCallbackKind::Pong => 1,
+            InteractionCallbackKind::ChannelMessageWithSource => 4,
+            InteractionCallbackKind::DeferredChannelMessageWithSource => 5,
+        }
+    }
+}
+
+impl TryFrom<u64> for InteractionCallbackKind {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        let r = match u {
+            1 => InteractionCallbackKind::Pong,
+            4 => InteractionCallbackKind::ChannelMessageWithSource,
+            5 => InteractionCallbackKind::DeferredChannelMessageWithSource,
+
+            other => return Err(EnumFromIntegerError::new(other)),
+        };
+
+        Ok(r)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
+pub struct InteractionApplicationCommandCallbackData {
+    #[builder(default, setter(strip_option))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tts: Option<bool>,
+
+    #[builder(default, setter(into, strip_option))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
+
+    #[builder(default, setter(into, strip_option))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    embeds: Option<Vec<Embed>>,
+
+    #[builder(default, setter(strip_option))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    allowed_mentions: Option<AllowedMentions>,
+
+    #[builder(default, setter(into, strip_option))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    flags: Option<IntegerEnum<InteractionCallbackFlags>>,
+}
+
+bitflags! {
+    pub struct InteractionCallbackFlags: u64 {
+        const EPHEMERAL = 1<<6;
+    }
+}
+
+impl TryFrom<u64> for InteractionCallbackFlags {
+    type Error = EnumFromIntegerError;
+
+    fn try_from(u: u64) -> Result<Self, Self::Error> {
+        Self::from_bits(u).ok_or(Self::Error::new(u))
+    }
+}
+
+impl From<InteractionCallbackFlags> for u64 {
+    fn from(uf: InteractionCallbackFlags) -> u64 {
+        uf.bits()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, TypedBuilder)]
+pub struct EditGuildApplicationCommandPermissions {
+    #[builder(setter(into))]
+    id: ApplicationCommandId,
+
+    #[builder(setter(into))]
+    permissions: Vec<ApplicationCommandPermission>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GuildApplicationCommandPermissions {
+    id: ApplicationCommandId,
+    application_id: ApplicationId,
+    guild_id: GuildId,
+    permissions: Vec<ApplicationCommandPermission>,
+}
+
+impl GuildApplicationCommandPermissions {
+    pub fn id(&self) -> ApplicationCommandId {
+        self.id
+    }
+
+    pub fn application_id(&self) -> ApplicationId {
+        self.application_id
+    }
+
+    pub fn guild_id(&self) -> GuildId {
+        self.guild_id
+    }
+
+    pub fn permissions(&self) -> &[ApplicationCommandPermission] {
+        &self.permissions
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
+struct CmdPermIdHelper {
+    id: Id<()>,
+    #[serde(rename = "type")]
+    kind: u64,
+}
+
+impl From<CommandPermissionId> for CmdPermIdHelper {
+    fn from(cpi: CommandPermissionId) -> Self {
+        match cpi {
+            CommandPermissionId::Role(rid) => Self {
+                id: u64::from(rid).into(),
+                kind: 1,
+            },
+            CommandPermissionId::User(uid) => Self {
+                id: u64::from(uid).into(),
+                kind: 2,
+            },
+        }
+    }
+}
+
+impl From<CmdPermIdHelper> for CommandPermissionId {
+    fn from(cpi: CmdPermIdHelper) -> Self {
+        match cpi {
+            CmdPermIdHelper { id, kind: 1 } => Self::Role(u64::from(id).into()),
+            CmdPermIdHelper { id, kind: 2 } => Self::User(u64::from(id).into()),
+            _ => panic!("unsupported command permission id"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(from = "CmdPermIdHelper", into = "CmdPermIdHelper")]
+pub enum CommandPermissionId {
+    Role(RoleId),
+    User(UserId),
+}
+
+impl CommandPermissionId {
+    pub fn is_user(self) -> bool {
+        matches!(self, Self::User(_))
+    }
+
+    pub fn is_role(self) -> bool {
+        matches!(self, Self::Role(_))
+    }
+}
+
+impl From<UserId> for CommandPermissionId {
+    fn from(uid: UserId) -> Self {
+        CommandPermissionId::User(uid)
+    }
+}
+
+impl From<RoleId> for CommandPermissionId {
+    fn from(rid: RoleId) -> Self {
+        CommandPermissionId::Role(rid)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
+pub struct ApplicationCommandPermission {
+    #[builder(setter(into))]
+    #[serde(flatten)]
+    id: CommandPermissionId,
+    permission: bool,
+}
+
+impl ApplicationCommandPermission {
+    pub fn id(&self) -> CommandPermissionId {
+        self.id
+    }
+
+    pub fn permission(&self) -> bool {
+        self.permission
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn deserialize_application_command_permission_user() {
+        let json = json!({
+            "id": 172150183260323840u64,
+            "type": 2,
+            "permission": true,
+        });
+
+        let acp: ApplicationCommandPermission =
+            serde_json::from_value(json).unwrap();
+
+        assert_eq!(
+            acp.id(),
+            CommandPermissionId::User(172150183260323840.into())
+        );
+        assert_eq!(acp.permission(), true);
+    }
+
+    #[test]
+    fn deserialize_application_command_permission_role() {
+        let json = json!({
+            "id": "172150183260323840",
+            "type": 1,
+            "permission": true,
+        });
+
+        let acp: ApplicationCommandPermission =
+            serde_json::from_value(json).unwrap();
+
+        assert_eq!(
+            acp.id(),
+            CommandPermissionId::Role(172150183260323840.into())
+        );
+        assert_eq!(acp.permission(), true);
+    }
+
+    #[test]
+    fn deserialize_guild_application_command_permissions() {
+        let json = json!({
+            "application_id": "658822586720976555",
+            "guild_id": "41771983429143937",
+            "id": "61771983423143937",
+            "permissions": [
+                {
+                    "id": "658822586720976555",
+                    "permission": false,
+                    "type": 2
+                }
+            ]
+        });
+
+        let perms: GuildApplicationCommandPermissions =
+            serde_json::from_value(json).unwrap();
+
+        assert_eq!(perms.application_id(), 658822586720976555.into());
+        assert_eq!(perms.guild_id(), 41771983429143937.into());
+        assert_eq!(perms.id(), 61771983423143937.into());
+
+        let items = perms.permissions();
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].id(),
+            CommandPermissionId::User(658822586720976555.into())
+        );
+        assert_eq!(items[0].permission(), false);
+    }
 }

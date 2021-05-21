@@ -8,19 +8,24 @@ use chrono::{DateTime, FixedOffset};
 
 use crate::application::{Application, ApplicationId};
 use crate::emoji::Emoji;
-use crate::enums::{EnumFromIntegerError, IntegerEnum};
+use crate::enums::{
+    EnumFromIntegerError, IntegerEnum, ParseEnumError, StringEnum,
+};
 use crate::guild::{GuildId, GuildMember};
 use crate::permissions::RoleId;
 use crate::snowflake::Id;
-use crate::user::User;
+use crate::user::{User, UserId};
 use crate::webhook::WebhookId;
 
 use serde::{Deserialize, Serialize};
 
 use std::convert::TryFrom;
+use std::str::FromStr;
 
 use super::embed::*;
 use super::{Channel, ChannelId, ChannelKind};
+
+use typed_builder::TypedBuilder;
 
 pub type AttachmentId = Id<Attachment>;
 
@@ -655,4 +660,59 @@ impl Reaction {
     pub fn emoji(&self) -> &Emoji {
         &self.emoji
     }
+}
+
+#[derive(Debug, Clone, Eq, Copy, PartialEq, Hash)]
+pub enum MentionKind {
+    Roles,
+    Users,
+    Everyone,
+}
+
+impl FromStr for MentionKind {
+    type Err = ParseEnumError;
+
+    fn from_str(txt: &str) -> Result<Self, Self::Err> {
+        let r = match txt {
+            "roles" => Self::Roles,
+            "users" => Self::Users,
+            "everyone" => Self::Everyone,
+
+            other => return Err(ParseEnumError::new(other.to_owned())),
+        };
+
+        Ok(r)
+    }
+}
+
+impl AsRef<str> for MentionKind {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::Roles => "roles",
+            Self::Users => "users",
+            Self::Everyone => "everyone",
+        }
+    }
+}
+
+impl std::fmt::Display for MentionKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let txt = self.as_ref();
+        f.write_str(txt)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
+pub struct AllowedMentions {
+    #[builder(setter(into))]
+    parse: Vec<StringEnum<MentionKind>>,
+
+    #[builder(setter(into))]
+    roles: Vec<RoleId>,
+
+    #[builder(setter(into))]
+    users: Vec<UserId>,
+
+    #[builder(default)]
+    replied_user: bool,
 }
