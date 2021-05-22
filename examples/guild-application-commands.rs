@@ -1,3 +1,4 @@
+use discord2::requests::*;
 use discord2::resources::application::*;
 use discord2::resources::guild::GuildId;
 use discord2::{Config, Discord, Error, Token};
@@ -16,17 +17,22 @@ async fn main() -> Result<(), Error> {
 
     let guild_id = GuildId::from_str(&guild_id).unwrap();
 
-    let me = discord.get_current_user().await?;
+    let me = GetCurrentUser::builder().build().send(&discord).await?;
 
     // List existing commands.
-    let current = discord
-        .get_guild_application_commands(me.id().into(), guild_id)
+    let current = GetGuildApplicationCommands::builder()
+        .application_id(me.id())
+        .guild_id(guild_id)
+        .build()
+        .send(&discord)
         .await?;
 
     println!("Current Commands: {:#?}", current);
 
     // Create a single command: `/guild-hello`
-    let cmd = NewApplicationCommand::builder()
+    let created = CreateGuildApplicationCommand::builder()
+        .guild_id(guild_id)
+        .application_id(me.id())
         .name("guild-hello")
         .description("this is a guild command")
         .options([ApplicationCommandOption::builder()
@@ -45,78 +51,79 @@ async fn main() -> Result<(), Error> {
                     .build(),
             ])
             .build()])
-        .build();
-
-    let created = discord
-        .create_guild_application_command(me.id().into(), guild_id, &cmd)
+        .build()
+        .send(&discord)
         .await?;
 
     println!("Created Command: {:#?}", created);
 
     // Update the `/guild-hello` command with a new description.
-    let cmd2 = EditApplicationCommand::builder()
+    let edited = EditGuildApplicationCommand::builder()
+        .application_id(me.id())
+        .guild_id(guild_id)
+        .command_id(created.id())
         .description("this is an updated guild command")
-        .build();
-
-    let edited = discord
-        .edit_guild_application_command(
-            me.id().into(),
-            guild_id,
-            created.id(),
-            &cmd2,
-        )
+        .build()
+        .send(&discord)
         .await?;
 
     println!("\nEdited Command: {:#?}", edited);
 
     // Delete the `/guild-hello` command.
-    discord
-        .delete_guild_application_command(me.id().into(), guild_id, edited.id())
+    DeleteGuildApplicationCommand::builder()
+        .application_id(me.id())
+        .guild_id(guild_id)
+        .command_id(edited.id())
+        .build()
+        .send(&discord)
         .await?;
 
     println!("\nCommand Deleted.");
 
     // Bulk create two commands.
     let commands: &[_] = &[
-        cmd,
+        NewApplicationCommand::builder()
+            .name("guild-hello")
+            .description("this is shorter guild command")
+            .build(),
         NewApplicationCommand::builder()
             .name("guild-goodbye")
             .description("this is another guild command")
             .build(),
     ];
 
-    let created = discord
-        .create_all_guild_application_commands(
-            me.id().into(),
-            guild_id,
-            commands,
-        )
+    let created = BulkOverwriteGuildApplicationCommands::builder()
+        .application_id(me.id())
+        .guild_id(guild_id)
+        .commands(commands)
+        .build()
+        .send(&discord)
         .await?;
 
     println!("\nCreated commands: {:#?}", created);
 
     // Set the specific permissions for a command.
-    let eperms = discord
-        .edit_application_command_permissions(
-            me.id().into(),
-            guild_id,
-            created[0].id(),
-            &[ApplicationCommandPermission::builder()
-                .id(me.id())
-                .permission(false)
-                .build()],
-        )
+    let eperms = EditApplicationCommandPermissions::builder()
+        .application_id(me.id())
+        .guild_id(guild_id)
+        .command_id(created[0].id())
+        .permissions([ApplicationCommandPermission::builder()
+            .id(me.id())
+            .permission(true)
+            .build()])
+        .build()
+        .send(&discord)
         .await?;
 
     println!("\nEdited permissions: {:#?}", eperms);
 
     // Get the specific permissions for a command.
-    let perms = discord
-        .get_application_command_permissions(
-            me.id().into(),
-            guild_id,
-            created[0].id(),
-        )
+    let perms = GetApplicationCommandPermissions::builder()
+        .application_id(me.id())
+        .guild_id(guild_id)
+        .command_id(created[0].id())
+        .build()
+        .send(&discord)
         .await?;
 
     println!("\nCommand permissions: {:#?}", perms);

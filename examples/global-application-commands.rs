@@ -1,3 +1,4 @@
+use discord2::requests::*;
 use discord2::resources::application::*;
 use discord2::{Config, Discord, Error, Token};
 
@@ -10,17 +11,20 @@ async fn main() -> Result<(), Error> {
 
     let discord = Discord::new(&config)?;
 
-    let me = discord.get_current_user().await?;
+    let me = GetCurrentUser::builder().build().send(&discord).await?;
 
     // List existing commands.
-    let current = discord
-        .get_global_application_commands(me.id().into())
+    let current = GetGlobalApplicationCommands::builder()
+        .application_id(me.id())
+        .build()
+        .send(&discord)
         .await?;
 
     println!("Current Commands: {:#?}", current);
 
     // Create a single command: `/hello`
-    let cmd = NewApplicationCommand::builder()
+    let created = CreateGlobalApplicationCommand::builder()
+        .application_id(me.id())
         .name("hello")
         .description("this is a command")
         .options([ApplicationCommandOption::builder()
@@ -39,43 +43,50 @@ async fn main() -> Result<(), Error> {
                     .build(),
             ])
             .build()])
-        .build();
-
-    let created = discord
-        .create_global_application_command(me.id().into(), &cmd)
+        .build()
+        .send(&discord)
         .await?;
 
     println!("Created Command: {:#?}", created);
 
     // Update the `/hello` command with a new description.
-    let cmd2 = EditApplicationCommand::builder()
+    let edited = EditGlobalApplicationCommand::builder()
+        .application_id(me.id())
+        .command_id(created.id())
         .description("this is an updated command")
-        .build();
-
-    let edited = discord
-        .edit_global_application_command(me.id().into(), created.id(), &cmd2)
+        .build()
+        .send(&discord)
         .await?;
 
     println!("\nEdited Command: {:#?}", edited);
 
     // Delete the `/hello` command.
-    discord
-        .delete_global_application_command(me.id().into(), edited.id())
+    DeleteGlobalApplicationCommand::builder()
+        .application_id(me.id())
+        .command_id(edited.id())
+        .build()
+        .send(&discord)
         .await?;
 
     println!("\nCommand Deleted.");
 
     // Bulk create two commands.
     let commands: &[_] = &[
-        cmd,
+        NewApplicationCommand::builder()
+            .name("hello")
+            .description("this is short command")
+            .build(),
         NewApplicationCommand::builder()
             .name("goodbye")
             .description("this is another command")
             .build(),
     ];
 
-    let created = discord
-        .create_all_global_application_commands(me.id().into(), commands)
+    let created = BulkOverwriteGlobalApplicationCommands::builder()
+        .commands(commands)
+        .application_id(me.id())
+        .build()
+        .send(&discord)
         .await?;
 
     println!("\nCreated commands: {:#?}", created);

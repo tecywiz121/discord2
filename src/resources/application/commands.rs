@@ -197,36 +197,32 @@ impl ApplicationCommand {
 #[derive(Debug, Clone, Serialize, TypedBuilder)]
 pub struct NewApplicationCommand {
     #[builder(setter(into))]
-    name: String,
+    pub(crate) name: String,
 
     #[builder(setter(into))]
-    description: String,
+    pub(crate) description: String,
 
     #[builder(default, setter(strip_option, into))]
-    options: Option<Vec<ApplicationCommandOption>>,
+    pub(crate) options: Option<Vec<ApplicationCommandOption>>,
 
     #[builder(default, setter(strip_option, into))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    default_permission: Option<bool>,
+    pub(crate) default_permission: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, TypedBuilder)]
-pub struct EditApplicationCommand {
-    #[builder(default, setter(into, strip_option))]
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct EditApplicationCommand {
     #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>,
+    pub name: Option<String>,
 
-    #[builder(default, setter(into, strip_option))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
+    pub description: Option<String>,
 
-    #[builder(default, setter(strip_option, into))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    options: Option<Vec<ApplicationCommandOption>>,
+    pub options: Option<Vec<ApplicationCommandOption>>,
 
-    #[builder(default, setter(strip_option, into))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    default_permission: Option<bool>,
+    pub default_permission: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]

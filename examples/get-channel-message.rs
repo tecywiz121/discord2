@@ -1,3 +1,4 @@
+use discord2::requests::GetChannelMessage;
 use discord2::resources::channel::{ChannelId, MessageId};
 use discord2::{Config, Discord, Error, Token};
 
@@ -16,7 +17,13 @@ async fn main() -> Result<(), Error> {
 
     let channel_id = ChannelId::from_str(&channel_id).unwrap();
     let message_id = MessageId::from_str(&message_id).unwrap();
-    let message = discord.get_channel_message(channel_id, message_id).await?;
+
+    let message = GetChannelMessage::builder()
+        .channel_id(channel_id)
+        .message_id(message_id)
+        .build()
+        .send(&discord)
+        .await?;
 
     println!("{:#?}", message);
 

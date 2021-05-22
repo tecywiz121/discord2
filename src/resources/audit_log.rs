@@ -436,8 +436,8 @@ pub enum AuditLogChange {
         AuditLogValues<IntegerEnum<DefaultMessageNotificationLevel>>,
     ),
     VanityUrlCode(AuditLogValues<String>),
-    RoleAdd(AuditLogValues<AuditLogRole>),
-    RoleRemove(AuditLogValues<AuditLogRole>),
+    RoleAdd(AuditLogValues<Vec<AuditLogRole>>),
+    RoleRemove(AuditLogValues<Vec<AuditLogRole>>),
     PruneDeleteDays(AuditLogValues<u64>),
     WidgetEnabled(AuditLogValues<bool>),
     WidgetChannelId(AuditLogValues<ChannelId>),
@@ -946,6 +946,35 @@ mod tests {
                 "target_id": null,
                 "user_id": "843299027126666666"
             },
+            {
+                "action_type": 25,
+                "changes": [
+                {
+                    "key": "$add",
+                    "new_value": [
+                    {
+                        "id": "843303955353888888",
+                        "name": "administrator"
+                    }
+                    ]
+                }
+                ],
+                "id": "845479374420777777",
+                "target_id": "843299027122666666",
+                "user_id": "144232857852888888"
+            },
+            {
+                "action_type": 28,
+                "id": "845479291629999999",
+                "target_id": "843299027122666666",
+                "user_id": "144232857852888888"
+            },
+            {
+                "action_type": 20,
+                "id": "845478521459444444",
+                "target_id": "843299027122222222",
+                "user_id": "144232857852888888"
+            }
             ],
             "integrations": [],
             "users": [
@@ -971,7 +1000,7 @@ mod tests {
         let log: AuditLog = serde_json::from_value(json).unwrap();
 
         let entries = log.audit_log_entries();
-        assert_eq!(entries.len(), 7);
+        assert_eq!(entries.len(), 10);
         assert_eq!(entries[0].action_kind(), AuditLogEvent::RoleUpdate);
         assert_eq!(entries[0].id(), 845138997059863333.into());
         assert_eq!(entries[0].target_id(), Some(843299980508444444.into()));
@@ -1058,6 +1087,27 @@ mod tests {
         assert_matches!(changes[4], AuditLogChange::MaxUses(_));
         assert_matches!(changes[5], AuditLogChange::MaxAge(_));
         assert_matches!(changes[6], AuditLogChange::Temporary(_));
+
+        assert_eq!(entries[7].action_kind(), AuditLogEvent::MemberRoleUpdate);
+        assert_eq!(entries[7].id(), 845479374420777777.into());
+        assert_eq!(entries[7].target_id(), Some(843299027122666666.into()));
+        assert_eq!(entries[7].user_id(), Some(144232857852888888.into()));
+
+        let changes = entries[7].changes().unwrap();
+        assert_eq!(changes.len(), 1);
+        assert_matches!(changes[0], AuditLogChange::RoleAdd(_));
+
+        assert_eq!(entries[8].action_kind(), AuditLogEvent::BotAdd);
+        assert_eq!(entries[8].id(), 845479291629999999.into());
+        assert_eq!(entries[8].target_id(), Some(843299027122666666.into()));
+        assert_eq!(entries[8].user_id(), Some(144232857852888888.into()));
+        assert!(entries[8].changes().is_none());
+
+        assert_eq!(entries[9].action_kind(), AuditLogEvent::MemberKick);
+        assert_eq!(entries[9].id(), 845478521459444444.into());
+        assert_eq!(entries[9].target_id(), Some(843299027122222222.into()));
+        assert_eq!(entries[9].user_id(), Some(144232857852888888.into()));
+        assert!(entries[9].changes().is_none());
 
         assert!(log.integrations().is_empty());
         assert!(log.webhooks().is_empty());
