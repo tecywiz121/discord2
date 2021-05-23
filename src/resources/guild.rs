@@ -12,6 +12,7 @@ use crate::enums::{
     EnumFromIntegerError, IntegerEnum, ParseEnumError, StringEnum,
 };
 use crate::gateway::PresenceUpdateEvent;
+use crate::image;
 use crate::permissions::{Role, RoleId};
 use crate::resources::application::ApplicationId;
 use crate::resources::channel::{Channel, ChannelId};
@@ -28,6 +29,114 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 
 pub type GuildId = Id<Guild>;
+
+#[derive(Debug, Clone)]
+pub struct GuildIcon {
+    has_gif: bool,
+    bare_path: String,
+}
+
+impl GuildIcon {
+    fn new(id: GuildId, hash: &str) -> Self {
+        Self {
+            has_gif: hash.starts_with("a_"),
+            bare_path: format!("icons/{}/{}", id, hash),
+        }
+    }
+}
+
+impl image::Image for GuildIcon {
+    fn supports(&self, format: image::Format) -> bool {
+        match format {
+            image::Format::Jpeg | image::Format::Png | image::Format::WebP => {
+                true
+            }
+            image::Format::Gif => self.has_gif,
+        }
+    }
+
+    fn bare_path(&self) -> &str {
+        &self.bare_path
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GuildSplash {
+    bare_path: String,
+}
+
+impl GuildSplash {
+    fn new(id: GuildId, hash: &str) -> Self {
+        Self {
+            bare_path: format!("splashes/{}/{}", id, hash),
+        }
+    }
+}
+
+impl image::Image for GuildSplash {
+    fn supports(&self, format: image::Format) -> bool {
+        matches!(
+            format,
+            image::Format::Jpeg | image::Format::Png | image::Format::WebP
+        )
+    }
+
+    fn bare_path(&self) -> &str {
+        &self.bare_path
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GuildDiscoverySplash {
+    bare_path: String,
+}
+
+impl GuildDiscoverySplash {
+    fn new(id: GuildId, hash: &str) -> Self {
+        Self {
+            bare_path: format!("discovery-splashes/{}/{}", id, hash),
+        }
+    }
+}
+
+impl image::Image for GuildDiscoverySplash {
+    fn supports(&self, format: image::Format) -> bool {
+        matches!(
+            format,
+            image::Format::Jpeg | image::Format::Png | image::Format::WebP
+        )
+    }
+
+    fn bare_path(&self) -> &str {
+        &self.bare_path
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GuildBanner {
+    bare_path: String,
+}
+
+impl GuildBanner {
+    fn new(id: GuildId, hash: &str) -> Self {
+        Self {
+            bare_path: format!("banners/{}/{}", id, hash),
+        }
+    }
+}
+
+impl image::Image for GuildBanner {
+    fn supports(&self, format: image::Format) -> bool {
+        matches!(
+            format,
+            image::Format::Jpeg | image::Format::Png | image::Format::WebP
+        )
+    }
+
+    fn bare_path(&self) -> &str {
+        &self.bare_path
+    }
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum VerificationLevel {
@@ -519,20 +628,24 @@ impl AvailableGuild {
         &self.name
     }
 
-    pub fn icon(&self) -> Option<&str> {
-        self.icon.as_deref()
+    pub fn icon(&self) -> Option<GuildIcon> {
+        self.icon.as_deref().map(|b| GuildIcon::new(self.id, b))
     }
 
-    pub fn icon_hash(&self) -> Option<&str> {
-        self.icon_hash.as_deref()
+    pub fn icon_hash(&self) -> Option<GuildIcon> {
+        self.icon_hash
+            .as_deref()
+            .map(|b| GuildIcon::new(self.id, b))
     }
 
-    pub fn splash(&self) -> Option<&str> {
-        self.splash.as_deref()
+    pub fn splash(&self) -> Option<GuildSplash> {
+        self.splash.as_deref().map(|b| GuildSplash::new(self.id, b))
     }
 
-    pub fn discovery_splash(&self) -> Option<&str> {
-        self.discovery_splash.as_deref()
+    pub fn discovery_splash(&self) -> Option<GuildDiscoverySplash> {
+        self.discovery_splash
+            .as_deref()
+            .map(|b| GuildDiscoverySplash::new(self.id, b))
     }
 
     pub fn owner(&self) -> Option<bool> {
@@ -695,8 +808,8 @@ impl AvailableGuild {
         self.description.as_deref()
     }
 
-    pub fn banner(&self) -> Option<&str> {
-        self.banner.as_deref()
+    pub fn banner(&self) -> Option<GuildBanner> {
+        self.banner.as_deref().map(|b| GuildBanner::new(self.id, b))
     }
 
     pub fn try_premium_tier(
@@ -753,6 +866,8 @@ pub struct GuildMember {
 
 #[cfg(test)]
 mod tests {
+    use crate::image::Image;
+
     use super::*;
 
     use serde_json::json;
@@ -821,7 +936,10 @@ mod tests {
 
         assert_eq!(avail.id(), 197038439483310086.into());
         assert_eq!(avail.name(), "Discord Testers");
-        assert_eq!(avail.icon(), Some("f64c482b807da4f539cff778d174971c"));
+        assert_eq!(
+            avail.icon().unwrap().bare_path(),
+            "icons/197038439483310086/f64c482b807da4f539cff778d174971c"
+        );
         assert_eq!(
             avail.description(),
             Some("The official place to report Discord Bugs!")
@@ -844,7 +962,10 @@ mod tests {
 
         assert!(avail.emojis().is_empty());
 
-        assert_eq!(avail.banner(), Some("9b6439a7de04f1d26af92f84ac9e1e4a"));
+        assert_eq!(
+            avail.banner().unwrap().bare_path(),
+            "banners/197038439483310086/9b6439a7de04f1d26af92f84ac9e1e4a"
+        );
         assert_eq!(avail.owner_id(), 73193882359173120.into());
         assert_eq!(avail.application_id(), None);
         assert_eq!(avail.region(), "us-west");

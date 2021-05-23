@@ -5,6 +5,7 @@
 mod error;
 pub mod requests;
 
+use crate::image;
 use crate::str::obscure;
 
 use educe::Educe;
@@ -64,7 +65,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, TypedBuilder)]
+#[derive(Debug, TypedBuilder)] // TODO: impl Deserialize
 #[builder(doc)]
 pub struct Config {
     token: Token,
@@ -80,6 +81,9 @@ pub struct Config {
 
     #[builder(default_code = "Config::DEFAULT_API_ROOT.to_owned()")]
     api_root: String,
+
+    #[builder(default_code = "Config::DEFAULT_CDN_ROOT.to_owned()")]
+    cdn_root: String,
 }
 
 impl Config {
@@ -87,6 +91,7 @@ impl Config {
     const DEFAULT_URL: &'static str = env!("CARGO_PKG_REPOSITORY");
     const DEFAULT_VERSION: &'static str = env!("CARGO_PKG_VERSION");
     const DEFAULT_API_ROOT: &'static str = "https://discord.com/api/v9/";
+    const DEFAULT_CDN_ROOT: &'static str = "https://cdn.discordapp.com/";
 }
 
 #[derive(Debug, Deserialize)]
@@ -97,6 +102,7 @@ struct DiscordError {
 
 #[derive(Debug)]
 pub struct Discord {
+    cdn_root: Url,
     api_root: Url,
     client: reqwest::Client,
 }
@@ -104,6 +110,10 @@ pub struct Discord {
 impl Discord {
     pub fn new(config: &Config) -> Result<Self, Error> {
         let api_root = Url::from_str(&config.api_root)
+            .map_err(|e| Box::new(e) as Box<_>)
+            .context(error::InvalidConfig)?;
+
+        let cdn_root = Url::from_str(&config.cdn_root)
             .map_err(|e| Box::new(e) as Box<_>)
             .context(error::InvalidConfig)?;
 
@@ -119,7 +129,24 @@ impl Discord {
             .user_agent(user_agent)
             .build()?;
 
-        Ok(Self { api_root, client })
+        Ok(Self {
+            cdn_root,
+            api_root,
+            client,
+        })
+    }
+
+    pub fn image_url<I>(
+        &self,
+        image: I,
+        format: image::Format,
+    ) -> Option<String>
+    where
+        I: image::Image,
+    {
+        let path = image.path(format)?;
+        let url = self.cdn_root.join(&path).unwrap().to_string();
+        Some(url)
     }
 
     fn url<S>(&self, path: S) -> Url

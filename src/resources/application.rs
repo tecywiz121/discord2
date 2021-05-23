@@ -8,6 +8,7 @@ use bitflags::bitflags;
 
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
 use crate::game_sdk::SkuId;
+use crate::image;
 use crate::resources::guild::GuildId;
 use crate::resources::user::User;
 use crate::snowflake::Id;
@@ -48,6 +49,32 @@ impl From<ApplicationFlags> for u64 {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ApplicationIcon {
+    bare_path: String,
+}
+
+impl image::Image for ApplicationIcon {
+    fn supports(&self, format: image::Format) -> bool {
+        matches!(
+            format,
+            image::Format::Jpeg | image::Format::Png | image::Format::WebP
+        )
+    }
+
+    fn bare_path(&self) -> &str {
+        &self.bare_path
+    }
+}
+
+impl ApplicationIcon {
+    fn new(app_id: ApplicationId, hash: &str) -> Self {
+        Self {
+            bare_path: format!("app-icons/{}/{}", app_id, hash),
+        }
+    }
+}
+
 pub type ApplicationId = Id<Application>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,8 +108,10 @@ impl Application {
         &self.name
     }
 
-    pub fn icon(&self) -> Option<&str> {
-        self.icon.as_deref()
+    pub fn icon(&self) -> Option<ApplicationIcon> {
+        self.icon
+            .as_deref()
+            .map(|i| ApplicationIcon::new(self.id, i))
     }
 
     pub fn description(&self) -> &str {
@@ -137,8 +166,10 @@ impl Application {
         self.slug.as_deref()
     }
 
-    pub fn cover_image(&self) -> Option<&str> {
-        self.cover_image.as_deref()
+    pub fn cover_image(&self) -> Option<ApplicationIcon> {
+        self.cover_image
+            .as_deref()
+            .map(|i| ApplicationIcon::new(self.id, i))
     }
 
     pub fn try_flags(
@@ -154,6 +185,8 @@ impl Application {
 
 #[cfg(test)]
 mod tests {
+    use crate::image::Image;
+
     use serde_json::json;
 
     use super::*;
@@ -203,10 +236,13 @@ mod tests {
 
         assert_eq!(app.bot_public(), true);
         assert_eq!(app.bot_require_code_grant(), false);
-        assert_eq!(app.cover_image(), Some("31deabb7e45b6c8ecfef77d2f99c81a5"));
+        assert_eq!(
+            app.cover_image().unwrap().bare_path(),
+            "app-icons/172150183260323840/31deabb7e45b6c8ecfef77d2f99c81a5"
+        );
         assert_eq!(app.description(), "Test");
         assert_eq!(app.guild_id(), Some(290926798626357260.into()));
-        assert_eq!(app.icon(), None);
+        assert!(app.icon().is_none());
         assert_eq!(app.name(), "Baba O-Riley");
 
         assert_eq!(app.primary_sku_id(), Some(172150183260323840.into()));
@@ -224,6 +260,6 @@ mod tests {
         assert_eq!(owner.username(), "i own a bot");
         assert_eq!(owner.discriminator(), "1738");
         assert_eq!(owner.id(), 172150183260323840.into());
-        assert_eq!(owner.avatar(), None);
+        assert_eq!(owner.avatar_or_default().bare_path(), "embed/avatars/3");
     }
 }

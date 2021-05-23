@@ -2,6 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+use crate::image;
 use crate::permissions::RoleId;
 use crate::resources::user::User;
 use crate::snowflake::Id;
@@ -9,6 +10,35 @@ use crate::snowflake::Id;
 use serde::{Deserialize, Serialize};
 
 pub type EmojiId = Id<Emoji>;
+
+#[derive(Debug, Clone)]
+pub struct EmojiImage {
+    bare_path: String,
+}
+
+impl From<EmojiId> for EmojiImage {
+    fn from(id: EmojiId) -> Self {
+        Self {
+            bare_path: format!("emojis/{}", id),
+        }
+    }
+}
+
+impl image::Image for EmojiImage {
+    fn supports(&self, format: image::Format) -> bool {
+        matches!(
+            format,
+            image::Format::Png
+                | image::Format::Jpeg
+                | image::Format::WebP
+                | image::Format::Gif
+        )
+    }
+
+    fn bare_path(&self) -> &str {
+        &self.bare_path
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Emoji {
@@ -29,6 +59,10 @@ impl Emoji {
 
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
+    }
+
+    pub fn image(&self) -> Option<EmojiImage> {
+        self.id.map(EmojiImage::from)
     }
 
     pub fn roles(&self) -> Option<&[RoleId]> {
@@ -58,6 +92,7 @@ impl Emoji {
 
 #[cfg(test)]
 mod tests {
+    use crate::image::Image;
     use crate::resources::user::UserFlags;
 
     use serde_json::json;
@@ -99,7 +134,10 @@ mod tests {
         assert_eq!(user.username(), "Luigi");
         assert_eq!(user.discriminator(), "0002");
         assert_eq!(user.id(), 96008815106887111.into());
-        assert_eq!(user.avatar(), Some("5500909a3274e1812beb4e8de6631111"));
+        assert_eq!(
+            user.avatar_or_default().bare_path(),
+            "avatars/96008815106887111/5500909a3274e1812beb4e8de6631111"
+        );
         assert_eq!(
             user.public_flags(),
             Some(

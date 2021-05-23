@@ -141,6 +141,7 @@ impl From<WebhookKind> for u64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::image::Image;
     use crate::resources::user::UserFlags;
 
     use super::*;
@@ -185,7 +186,10 @@ mod tests {
         assert_eq!(user.username(), "test");
         assert_eq!(user.discriminator(), "7479");
         assert_eq!(user.id(), 190320984123768832.into());
-        assert_eq!(user.avatar(), Some("b004ec1740a63ca06ae2e14c5cee11f3"));
+        assert_eq!(
+            user.avatar_or_default().bare_path(),
+            "avatars/190320984123768832/b004ec1740a63ca06ae2e14c5cee11f3"
+        );
         assert_eq!(
             user.public_flags(),
             Some(
@@ -247,7 +251,10 @@ mod tests {
         assert_eq!(user.username(), "test");
         assert_eq!(user.discriminator(), "7479");
         assert_eq!(user.id(), 190320984123768832.into());
-        assert_eq!(user.avatar(), Some("b004ec1740a63ca06ae2e14c5cee11f3"));
+        assert_eq!(
+            user.avatar_or_default().bare_path(),
+            "avatars/190320984123768832/b004ec1740a63ca06ae2e14c5cee11f3"
+        );
         assert_eq!(
             user.public_flags(),
             Some(

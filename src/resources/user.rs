@@ -5,12 +5,61 @@
 use bitflags::bitflags;
 
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
+use crate::image;
 use crate::resources::application::ApplicationId;
 use crate::snowflake::Id;
 
 use serde::{Deserialize, Serialize};
 
 use std::convert::TryFrom;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+enum AvatarKind {
+    Default,
+    Custom(bool),
+}
+
+#[derive(Debug, Clone)]
+pub struct UserAvatar {
+    kind: AvatarKind,
+    bare_path: String,
+}
+
+impl UserAvatar {
+    fn with_discriminator(d: &str) -> Self {
+        let d: u64 = d.parse().unwrap_or_default();
+
+        Self {
+            kind: AvatarKind::Default,
+            bare_path: format!("embed/avatars/{}", d % 5),
+        }
+    }
+
+    fn with_hash(uid: UserId, h: &str) -> Self {
+        let has_gif = h.starts_with("a_");
+
+        Self {
+            kind: AvatarKind::Custom(has_gif),
+            bare_path: format!("avatars/{}/{}", uid, h),
+        }
+    }
+}
+
+impl image::Image for UserAvatar {
+    fn supports(&self, format: image::Format) -> bool {
+        match (self.kind, format) {
+            (_, image::Format::Png) => true,
+            (AvatarKind::Default, _) => false,
+            (AvatarKind::Custom(has_gif), image::Format::Gif) => has_gif,
+            (AvatarKind::Custom(_), image::Format::Jpeg) => true,
+            (AvatarKind::Custom(_), image::Format::WebP) => true,
+        }
+    }
+
+    fn bare_path(&self) -> &str {
+        &self.bare_path
+    }
+}
 
 #[derive(Debug)]
 #[doc(hidden)]
@@ -138,8 +187,16 @@ impl User {
         &self.discriminator
     }
 
-    pub fn avatar(&self) -> Option<&str> {
-        self.avatar.as_deref()
+    pub fn avatar(&self) -> Option<UserAvatar> {
+        self.avatar
+            .as_deref()
+            .map(|a| UserAvatar::with_hash(self.id, a))
+    }
+
+    pub fn avatar_or_default(&self) -> UserAvatar {
+        self.avatar().unwrap_or_else(|| {
+            UserAvatar::with_discriminator(&self.discriminator)
+        })
     }
 
     pub fn bot(&self) -> Option<bool> {

@@ -9,6 +9,7 @@ mod discord;
 pub mod enums;
 pub mod game_sdk;
 pub mod gateway;
+pub mod image;
 pub mod permissions;
 pub mod resources;
 pub mod snowflake;

@@ -407,6 +407,8 @@ impl Channel {
 mod tests {
     use chrono::{TimeZone, Utc};
 
+    use crate::image::Image;
+
     use serde_json::json;
 
     use super::*;
@@ -504,16 +506,16 @@ mod tests {
         assert_eq!(recipients[0].discriminator(), "9999");
         assert_eq!(recipients[0].id(), 82198898841029460.into());
         assert_eq!(
-            recipients[0].avatar(),
-            Some("33ecab261d4681afa4d85a04691c4a01")
+            recipients[0].avatar_or_default().bare_path(),
+            "avatars/82198898841029460/33ecab261d4681afa4d85a04691c4a01"
         );
 
         assert_eq!(recipients[1].username(), "test2");
         assert_eq!(recipients[1].discriminator(), "9999");
         assert_eq!(recipients[1].id(), 82198810841029460.into());
         assert_eq!(
-            recipients[1].avatar(),
-            Some("33ecab261d4681afa4d85a10691c4a01")
+            recipients[1].avatar_or_default().bare_path(),
+            "avatars/82198810841029460/33ecab261d4681afa4d85a10691c4a01"
         );
     }
 
@@ -552,8 +554,8 @@ mod tests {
         assert_eq!(recipients[0].discriminator(), "9999");
         assert_eq!(recipients[0].id(), 82198898841029460.into());
         assert_eq!(
-            recipients[0].avatar(),
-            Some("33ecab261d4681afa4d85a04691c4a01")
+            recipients[0].avatar_or_default().bare_path(),
+            "avatars/82198898841029460/33ecab261d4681afa4d85a04691c4a01"
         );
     }
 
@@ -726,7 +728,10 @@ mod tests {
         assert_eq!(author.username(), "Mason");
         assert_eq!(author.discriminator(), "9999");
         assert_eq!(author.id(), 53908099506183680.into());
-        assert_eq!(author.avatar(), Some("a_bab14f271d565501444b2ca3be944b25"));
+        assert_eq!(
+            author.avatar_or_default().bare_path(),
+            "avatars/53908099506183680/a_bab14f271d565501444b2ca3be944b25"
+        );
     }
 
     #[test]
@@ -812,6 +817,9 @@ mod tests {
         assert_eq!(author.username(), "Mason");
         assert_eq!(author.discriminator(), "9999");
         assert_eq!(author.id(), 53908099506183680.into());
-        assert_eq!(author.avatar(), Some("a_bab14f271d565501444b2ca3be944b25"));
+        assert_eq!(
+            author.avatar_or_default().bare_path(),
+            "avatars/53908099506183680/a_bab14f271d565501444b2ca3be944b25"
+        );
     }
 }

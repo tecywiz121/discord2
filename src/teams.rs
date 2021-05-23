@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
+use crate::image;
 use crate::resources::user::{User, UserId};
 use crate::snowflake::Id;
 
@@ -73,6 +74,32 @@ impl TeamMember {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TeamIcon {
+    bare_path: String,
+}
+
+impl image::Image for TeamIcon {
+    fn supports(&self, format: image::Format) -> bool {
+        matches!(
+            format,
+            image::Format::Jpeg | image::Format::Png | image::Format::WebP
+        )
+    }
+
+    fn bare_path(&self) -> &str {
+        &self.bare_path
+    }
+}
+
+impl TeamIcon {
+    fn new(app_id: TeamId, hash: &str) -> Self {
+        Self {
+            bare_path: format!("team-icons/{}/{}", app_id, hash),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Team {
     id: TeamId,
@@ -87,8 +114,8 @@ impl Team {
         self.id
     }
 
-    pub fn icon(&self) -> Option<&str> {
-        self.icon.as_deref()
+    pub fn icon(&self) -> Option<TeamIcon> {
+        self.icon.as_deref().map(|i| TeamIcon::new(self.id, i))
     }
 
     pub fn members(&self) -> &[TeamMember] {
