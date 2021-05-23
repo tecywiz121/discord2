@@ -10,6 +10,7 @@ use bitflags::bitflags;
 use chrono::{DateTime, FixedOffset};
 
 use crate::enums::{EnumFromIntegerError, IntegerEnum};
+use crate::image::UploadImage;
 use crate::permissions::RoleId;
 use crate::resources::application::ApplicationId;
 use crate::resources::guild::GuildId;
@@ -22,6 +23,8 @@ pub use self::message::*;
 use serde::{Deserialize, Serialize};
 
 use std::convert::TryFrom;
+
+use typed_builder::TypedBuilder;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadMetadata {
@@ -186,11 +189,16 @@ impl OverwriteId {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
 pub struct Overwrite {
+    #[builder(setter(into))]
     #[serde(flatten)]
     id: OverwriteId,
+
+    #[builder(setter(into))]
     allow: String,
+
+    #[builder(setter(into))]
     deny: String,
 }
 
@@ -266,6 +274,58 @@ impl TryFrom<u64> for ChannelKind {
 
         Ok(r)
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct EditChannel {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) name: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) icon: Option<UploadImage>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "type")]
+    pub(crate) kind: Option<IntegerEnum<ChannelKind>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) position: Option<u64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) topic: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) nsfw: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) rate_limit_per_user: Option<u64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) bitrate: Option<u64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) user_limit: Option<u64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) permission_overwrites: Option<Vec<Overwrite>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) parent_id: Option<ChannelId>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) rtc_region: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) video_quality_mode: Option<IntegerEnum<VideoQualityMode>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) archived: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) auto_archive_duration: Option<u64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) locked: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

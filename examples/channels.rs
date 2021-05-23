@@ -22,7 +22,16 @@ async fn main() -> Result<(), Error> {
         .send(&discord)
         .await?;
 
-    println!("{:#?}", channel);
+    println!("Got Channel: {:#?}", channel);
+
+    let edit = ModifyChannel::builder()
+        .channel_id(channel_id)
+        .name("new-name")
+        .build()
+        .send(&discord)
+        .await?;
+
+    println!("Edited Channel: {:#?}", edit);
 
     Ok(())
 }

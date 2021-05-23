@@ -1,4 +1,5 @@
 use crate::enums::IntegerEnum;
+use crate::image::UploadImage;
 use crate::resources::application::{
     ApplicationCommand, ApplicationCommandId, ApplicationCommandOption,
     ApplicationCommandPermission, ApplicationId, EditApplicationCommand,
@@ -6,7 +7,10 @@ use crate::resources::application::{
     NewApplicationCommand,
 };
 use crate::resources::audit_log::{AuditLog, AuditLogEntryId, AuditLogEvent};
-use crate::resources::channel::{Channel, ChannelId, Message, MessageId};
+use crate::resources::channel::{
+    Channel, ChannelId, ChannelKind, EditChannel, Message, MessageId,
+    Overwrite, VideoQualityMode,
+};
 use crate::resources::guild::GuildId;
 use crate::resources::user::{User, UserId};
 
@@ -516,5 +520,85 @@ impl GetChannelMessage {
             self.channel_id, self.message_id
         );
         discord.get(path).await
+    }
+}
+
+#[derive(Debug, Clone, TypedBuilder, Serialize)]
+pub struct ModifyChannel {
+    channel_id: ChannelId,
+
+    #[builder(default, setter(strip_option, into))]
+    name: Option<String>,
+
+    #[builder(default, setter(strip_option))]
+    icon: Option<UploadImage>,
+
+    #[builder(default, setter(strip_option, into))]
+    kind: Option<IntegerEnum<ChannelKind>>,
+
+    #[builder(default, setter(strip_option))]
+    position: Option<u64>,
+
+    #[builder(default, setter(strip_option, into))]
+    topic: Option<String>,
+
+    #[builder(default, setter(strip_option))]
+    nsfw: Option<bool>,
+
+    #[builder(default, setter(strip_option))]
+    rate_limit_per_user: Option<u64>,
+
+    #[builder(default, setter(strip_option))]
+    bitrate: Option<u64>,
+
+    #[builder(default, setter(strip_option))]
+    user_limit: Option<u64>,
+
+    #[builder(default, setter(strip_option, into))]
+    permission_overwrites: Option<Vec<Overwrite>>,
+
+    #[builder(default, setter(strip_option))]
+    parent_id: Option<ChannelId>,
+
+    #[builder(default, setter(strip_option, into))]
+    rtc_region: Option<String>,
+
+    #[builder(default, setter(strip_option, into))]
+    video_quality_mode: Option<IntegerEnum<VideoQualityMode>>,
+
+    #[builder(default, setter(strip_option))]
+    archived: Option<bool>,
+
+    #[builder(default, setter(strip_option))]
+    auto_archive_duration: Option<u64>,
+
+    #[builder(default, setter(strip_option))]
+    locked: Option<bool>,
+}
+
+impl ModifyChannel {
+    pub async fn send(self, discord: &Discord) -> Result<Channel, Error> {
+        let path = format!("channels/{}", self.channel_id);
+
+        let body = EditChannel {
+            name: self.name,
+            icon: self.icon,
+            kind: self.kind,
+            position: self.position,
+            topic: self.topic,
+            nsfw: self.nsfw,
+            rate_limit_per_user: self.rate_limit_per_user,
+            bitrate: self.bitrate,
+            user_limit: self.user_limit,
+            permission_overwrites: self.permission_overwrites,
+            parent_id: self.parent_id,
+            rtc_region: self.rtc_region,
+            video_quality_mode: self.video_quality_mode,
+            archived: self.archived,
+            auto_archive_duration: self.auto_archive_duration,
+            locked: self.locked,
+        };
+
+        discord.patch(path, &body).await
     }
 }
