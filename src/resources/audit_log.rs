@@ -30,7 +30,7 @@ mod error {
 use crate::enums::{
     EnumFromIntegerError, IntegerEnum, ParseEnumError, StringEnum,
 };
-use crate::permissions::RoleId;
+use crate::permissions::{Permissions, RoleId};
 use crate::resources::application::ApplicationId;
 use crate::resources::channel::{ChannelId, ChannelKind, MessageId, Overwrite};
 use crate::resources::guild::{
@@ -449,7 +449,7 @@ pub enum AuditLogChange {
     Nsfw(AuditLogValues<bool>),
     ApplicationId(AuditLogValues<ApplicationId>),
     RateLimitPerUser(AuditLogValues<u64>),
-    Permissions(AuditLogValues<String>), // TODO: Type-ify
+    Permissions(AuditLogValues<StringEnum<Permissions>>),
     Color(AuditLogValues<u32>),
     Hoist(AuditLogValues<bool>),
     Mentionable(AuditLogValues<bool>),

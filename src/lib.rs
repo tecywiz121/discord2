@@ -15,5 +15,6 @@ pub mod resources;
 pub mod snowflake;
 mod str;
 pub mod teams;
+mod visitor;
 
 pub use self::discord::{requests, Config, Discord, Error, Token};

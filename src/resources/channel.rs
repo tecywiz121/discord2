@@ -9,9 +9,11 @@ use bitflags::bitflags;
 
 use chrono::{DateTime, FixedOffset};
 
-use crate::enums::{EnumFromIntegerError, IntegerEnum};
+use crate::enums::{
+    EnumFromIntegerError, IntegerEnum, ParseEnumError, StringEnum,
+};
 use crate::image::UploadImage;
-use crate::permissions::RoleId;
+use crate::permissions::{Permissions, RoleId};
 use crate::resources::application::ApplicationId;
 use crate::resources::guild::GuildId;
 use crate::resources::user::{User, UserId};
@@ -196,10 +198,10 @@ pub struct Overwrite {
     id: OverwriteId,
 
     #[builder(setter(into))]
-    allow: String,
+    allow: StringEnum<Permissions>,
 
     #[builder(setter(into))]
-    deny: String,
+    deny: StringEnum<Permissions>,
 }
 
 impl Overwrite {
@@ -207,12 +209,20 @@ impl Overwrite {
         self.id
     }
 
-    pub fn allow(&self) -> &str {
-        &self.allow
+    pub fn try_allow(&self) -> Result<Permissions, ParseEnumError> {
+        self.allow.try_unwrap()
     }
 
-    pub fn deny(&self) -> &str {
-        &self.deny
+    pub fn allow(&self) -> Permissions {
+        self.allow.unwrap()
+    }
+
+    pub fn try_deny(&self) -> Result<Permissions, ParseEnumError> {
+        self.deny.try_unwrap()
+    }
+
+    pub fn deny(&self) -> Permissions {
+        self.deny.unwrap()
     }
 
     // TODO: Expand allow/deny

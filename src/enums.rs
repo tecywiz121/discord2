@@ -101,6 +101,20 @@ where
     }
 }
 
+impl Serialize for StringEnum<crate::permissions::Permissions> {
+    // TODO: Don't special case `Permissions`.
+
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.0 {
+            Inner::Parsed(t) => t.bits().to_string().serialize(s),
+            Inner::Raw(r) => r.serialize(s),
+        }
+    }
+}
+
 impl<'de, T> Deserialize<'de> for StringEnum<T>
 where
     T: FromStr,

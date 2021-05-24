@@ -13,7 +13,7 @@ use crate::enums::{
 };
 use crate::gateway::PresenceUpdateEvent;
 use crate::image;
-use crate::permissions::{Role, RoleId};
+use crate::permissions::{Permissions, Role, RoleId};
 use crate::resources::application::ApplicationId;
 use crate::resources::channel::{Channel, ChannelId};
 use crate::resources::emoji::{Emoji, EmojiId};
@@ -573,7 +573,7 @@ pub struct AvailableGuild {
     discovery_splash: Option<String>,
     owner: Option<bool>,
     owner_id: UserId,
-    permissions: Option<String>,
+    permissions: Option<StringEnum<Permissions>>,
     region: String,
     afk_channel_id: Option<ChannelId>,
     afk_timeout: u64,
@@ -656,8 +656,14 @@ impl AvailableGuild {
         self.owner_id
     }
 
-    pub fn permissions(&self) -> Option<&str> {
-        self.permissions.as_deref()
+    pub fn try_permissions(
+        &self,
+    ) -> Option<Result<Permissions, ParseEnumError>> {
+        self.permissions.as_ref().map(StringEnum::try_unwrap)
+    }
+
+    pub fn permissions(&self) -> Option<Permissions> {
+        self.permissions.as_ref().map(StringEnum::unwrap)
     }
 
     pub fn region(&self) -> &str {
