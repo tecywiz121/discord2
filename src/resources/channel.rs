@@ -191,6 +191,18 @@ impl OverwriteId {
     }
 }
 
+impl From<UserId> for OverwriteId {
+    fn from(uid: UserId) -> Self {
+        Self::Member(uid)
+    }
+}
+
+impl From<RoleId> for OverwriteId {
+    fn from(rid: RoleId) -> Self {
+        Self::Role(rid)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
 pub struct Overwrite {
     #[builder(setter(into))]

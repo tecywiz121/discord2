@@ -5,8 +5,7 @@
 use bitflags::bitflags;
 
 use crate::enums::{ParseEnumError, StringEnum};
-use crate::resources::channel::ChannelId;
-use crate::resources::guild::IntegrationId;
+use crate::resources::guild::{GuildId, IntegrationId};
 use crate::resources::user::BotId;
 use crate::snowflake::Id;
 
@@ -16,9 +15,9 @@ use std::str::FromStr;
 
 pub type RoleId = Id<Role>;
 
-impl From<ChannelId> for RoleId {
-    fn from(cid: ChannelId) -> Self {
-        let id: u64 = cid.into();
+impl RoleId {
+    pub fn everyone(guild_id: GuildId) -> Self {
+        let id: u64 = guild_id.into();
         id.into()
     }
 }
